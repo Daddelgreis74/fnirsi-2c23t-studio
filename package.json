@@ -1,0 +1,60 @@
+{
+  "name": "fnirsi-2c23t-studio",
+  "productName": "FNIRSI 2C23T Studio",
+  "version": "1.0.0",
+  "description": "Professional Windows Desktop Studio, Companion & Control Suite for the FNIRSI 2C23T Handheld Oscilloscope, Multimeter & DDS Function Generator",
+  "main": "src/main.js",
+  "author": "Daddelgreis74",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "dist:nsis": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.daddelgreis74.2c23tstudio",
+    "productName": "FNIRSI 2C23T Studio",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FNIRSI 2C23T Studio",
+      "uninstallDisplayName": "FNIRSI 2C23T Studio"
+    },
+    "portable": {
+      "artifactName": "FNIRSI-2C23T-Studio-Portable-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
