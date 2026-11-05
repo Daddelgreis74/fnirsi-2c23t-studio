@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('api', {
   openFirmwareFolder: () => ipcRenderer.invoke('system:open-firmware-folder'),
   openInExplorer: (pathStr) => ipcRenderer.invoke('system:open-explorer', pathStr),
   openFile: (pathStr) => ipcRenderer.invoke('system:open-file', pathStr),
+  saveCsv: (defaultName, content) => ipcRenderer.invoke('system:save-csv', { defaultName, content }),
   selectDirectory: () => ipcRenderer.invoke('system:select-directory')
 });

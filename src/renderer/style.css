@@ -837,3 +837,470 @@ input[type="range"] {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ========================================================
+   3-IN-1 INSTRUMENT SWITCHER (HEADER)
+   ======================================================== */
+.instrument-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-instrument {
+  cursor: pointer;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-instrument:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-instrument.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(67, 100, 247, 0.3));
+  color: var(--color-cyan);
+  border-color: var(--color-cyan-glow);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
+}
+
+.btn-instrument .inst-icon {
+  font-size: 15px;
+}
+
+/* ========================================================
+   DIGITAL-MULTIMETER & DATENLOGGER (TAB 0)
+   ======================================================== */
+.dmm-layout {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 20px;
+  height: calc(100vh - 130px);
+  min-height: 540px;
+}
+
+.dmm-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+}
+
+/* --- DMM DIGITAL SCREEN --- */
+.dmm-screen {
+  background: radial-gradient(circle at 50% 20%, #08182b 0%, #030814 100%);
+  border: 2px solid #1e293b;
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: inset 0 0 35px rgba(0, 242, 254, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.dmm-screen::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 254, 0.4), transparent);
+}
+
+.dmm-screen-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dmm-mode-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dmm-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  transition: all 0.2s;
+}
+
+.dmm-tag.active {
+  background: rgba(0, 242, 254, 0.15);
+  color: var(--color-cyan);
+  border-color: rgba(0, 242, 254, 0.4);
+  text-shadow: 0 0 8px var(--color-cyan-glow);
+}
+
+.dmm-clock {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.dmm-screen-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 12px 0 14px 0;
+}
+
+.dmm-digits-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.dmm-sign {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--color-amber);
+  font-family: var(--font-mono);
+  min-width: 24px;
+}
+
+.dmm-value {
+  font-size: 58px;
+  font-weight: 800;
+  color: #00f2fe;
+  font-family: var(--font-mono);
+  letter-spacing: 2px;
+  text-shadow: 0 0 25px rgba(0, 242, 254, 0.65), 0 0 50px rgba(0, 242, 254, 0.2);
+}
+
+.dmm-unit-badge {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--color-amber);
+  font-family: var(--font-mono);
+  text-shadow: 0 0 12px rgba(251, 146, 60, 0.6);
+}
+
+/* --- BARGRAPH --- */
+.dmm-bargraph-container {
+  margin: 10px 0 16px 0;
+}
+
+.dmm-bargraph-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-bottom: 5px;
+  padding: 0 2px;
+}
+
+.dmm-bargraph-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dmm-bargraph-fill {
+  height: 100%;
+  width: 25%;
+  background: linear-gradient(90deg, #10b981 0%, #00f2fe 65%, #fb923c 100%);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);
+  transition: width 0.08s linear;
+}
+
+/* --- SUBSTATS --- */
+.dmm-screen-substats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.substat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.substat .lbl {
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.substat b {
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+/* --- DMM FUNCTIONS MATRIX --- */
+.dmm-functions-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.dmm-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.dmm-modes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.btn-dmm-mode {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 9px 4px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+.btn-dmm-mode:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-dmm-mode.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(67, 100, 247, 0.35));
+  border-color: var(--color-cyan);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.35);
+}
+
+.dmm-softkeys-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.btn-dmm-soft {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 8px 3px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.btn-dmm-soft:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-dmm-soft.active {
+  background: rgba(251, 146, 60, 0.2);
+  border-color: var(--color-amber);
+  color: var(--color-amber);
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.3);
+}
+
+/* --- SIMULATION DIAL --- */
+.dmm-simulation-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+#lblSimValue {
+  font-weight: 700;
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+}
+
+#rngDmmSim {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--color-cyan);
+}
+
+.sim-hints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* --- LOGGER & CHART PANEL (RIGHT) --- */
+.dmm-logger-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.dmm-chart-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dmm-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+.chart-options {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chart-options select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  outline: none;
+}
+
+.dmm-canvas-container {
+  background: #040711;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+#dmmCanvas {
+  width: 100%;
+  height: 250px;
+  display: block;
+}
+
+/* --- TABLE BOX --- */
+.dmm-table-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+.dmm-table-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dmm-table-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.dmm-table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.dmm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.dmm-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  background-color: #0f1627;
+}
+
+.dmm-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.dmm-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.dmm-table .val-cyan {
+  color: var(--color-cyan);
+  font-weight: 700;
+}

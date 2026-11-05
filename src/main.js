@@ -109,6 +109,19 @@ ipcMain.handle('system:open-file', async (_event, filePath) => {
   return false;
 });
 
+ipcMain.handle('system:save-csv', async (_event, { defaultName, content }) => {
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'DMM Messreihe speichern',
+    defaultPath: defaultName || 'dmm_measurements.csv',
+    filters: [{ name: 'CSV (Trennzeichen-getrennt)', extensions: ['csv'] }]
+  });
+  if (!res.canceled && res.filePath) {
+    fs.writeFileSync(res.filePath, content, 'utf8');
+    return { success: true, filePath: res.filePath };
+  }
+  return { success: false };
+});
+
 ipcMain.handle('system:select-directory', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory', 'createDirectory']

@@ -17,9 +17,10 @@ const metaDrive = document.getElementById('metaDrive');
 const btnRefresh = document.getElementById('btnRefresh');
 const btnOpenExplorer = document.getElementById('btnOpenExplorer');
 
-// Tabs
+// Tabs & Navigation
 const navItems = document.querySelectorAll('.nav-item');
 const tabPanels = document.querySelectorAll('.tab-panel');
+const instrumentButtons = document.querySelectorAll('.btn-instrument');
 
 // Toast
 const toast = document.getElementById('toast');
@@ -29,18 +30,28 @@ function showToast(msg, duration = 3000) {
   setTimeout(() => toast.classList.remove('show'), duration);
 }
 
-// Tab Switching
-navItems.forEach(item => {
-  item.addEventListener('click', () => {
-    const target = item.dataset.tab;
-    navItems.forEach(n => n.classList.remove('active'));
-    tabPanels.forEach(p => p.classList.remove('active'));
-    item.classList.add('active');
-    const panel = document.getElementById(`tab-${target}`);
-    if (panel) panel.classList.add('active');
-
-    if (target === 'gallery') loadScreenshots();
+// 3-in-1 Instrument & Tab Switching
+function switchTab(target) {
+  navItems.forEach(n => {
+    n.classList.toggle('active', n.dataset.tab === target);
   });
+  instrumentButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === target);
+  });
+  tabPanels.forEach(p => {
+    p.classList.toggle('active', p.id === `tab-${target}`);
+  });
+
+  if (target === 'gallery') loadScreenshots();
+  if (target === 'dmm') renderDmmCanvas();
+}
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => switchTab(item.dataset.tab));
+});
+
+instrumentButtons.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
 // Refresh button
@@ -91,6 +102,551 @@ function updateDeviceUI(status) {
 // Initial status fetch & listener
 window.api.getStatus().then(updateDeviceUI);
 window.api.onStatusChange(updateDeviceUI);
+
+// ==========================================
+// 0. DIGITAL-MULTIMETER & DATENLOGGER (DMM)
+// ==========================================
+let dmmMode = 'DCV';
+let dmmUnit = 'V';
+let dmmSubtype = 'DC';
+let dmmHold = false;
+let dmmRel = false;
+let dmmRelBaseline = 0;
+let dmmAuto = true;
+let dmmBuzzerEnabled = true;
+let dmmLoggerRunning = true;
+let dmmLogRate = 250;
+let dmmTimeWindow = 60; // seconds
+
+let dmmHistory = [];
+let dmmStats = { min: null, max: null, count: 0, sum: 0 };
+let dmmLogCounter = 0;
+let dmmLogTimer = null;
+
+// Audio Buzzer for Continuity (Web Audio API)
+let audioCtx = null;
+let buzzerOsc = null;
+
+function playBuzzer(freq = 2400) {
+  if (!dmmBuzzerEnabled) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    if (buzzerOsc) return;
+
+    buzzerOsc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    buzzerOsc.type = 'sine';
+    buzzerOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    buzzerOsc.connect(gain);
+    gain.connect(audioCtx.destination);
+    buzzerOsc.start();
+  } catch (e) {}
+}
+
+function stopBuzzer() {
+  if (buzzerOsc) {
+    try {
+      buzzerOsc.stop();
+      buzzerOsc.disconnect();
+    } catch(e) {}
+    buzzerOsc = null;
+  }
+}
+
+// DOM Elements for DMM
+const dmmValueEl = document.getElementById('dmmValue');
+const dmmSignEl = document.getElementById('dmmSign');
+const dmmUnitEl = document.getElementById('dmmUnit');
+const dmmBargraphFill = document.getElementById('dmmBargraphFill');
+const dmmClockEl = document.getElementById('dmmClock');
+
+const dmmStatMinEl = document.getElementById('dmmStatMin');
+const dmmStatMaxEl = document.getElementById('dmmStatMax');
+const dmmStatAvgEl = document.getElementById('dmmStatAvg');
+const dmmStatRelEl = document.getElementById('dmmStatRel');
+
+const tagDmmSubtype = document.getElementById('tagDmmSubtype');
+const tagDmmAuto = document.getElementById('tagDmmAuto');
+const tagDmmHold = document.getElementById('tagDmmHold');
+const tagDmmRel = document.getElementById('tagDmmRel');
+const tagDmmBuzzer = document.getElementById('tagDmmBuzzer');
+
+const btnDmmHold = document.getElementById('btnDmmHold');
+const btnDmmRel = document.getElementById('btnDmmRel');
+const btnDmmRange = document.getElementById('btnDmmRange');
+const btnDmmResetStats = document.getElementById('btnDmmResetStats');
+const btnDmmBuzzer = document.getElementById('btnDmmBuzzer');
+
+const rngDmmSim = document.getElementById('rngDmmSim');
+const lblSimValue = document.getElementById('lblSimValue');
+const btnDmmRun = document.getElementById('btnDmmRun');
+const btnDmmExportCsv = document.getElementById('btnDmmExportCsv');
+const btnDmmClearLogger = document.getElementById('btnDmmClearLogger');
+
+const selDmmRate = document.getElementById('selDmmRate');
+const selDmmWindow = document.getElementById('selDmmWindow');
+const dmmCanvas = document.getElementById('dmmCanvas');
+const dmmCtx = dmmCanvas ? dmmCanvas.getContext('2d') : null;
+const dmmTableBody = document.getElementById('dmmTableBody');
+const lblLogCount = document.getElementById('lblLogCount');
+
+// Reset Statistics
+function resetDmmStats() {
+  dmmStats = { min: null, max: null, count: 0, sum: 0 };
+  if (dmmStatMinEl) dmmStatMinEl.innerText = '--';
+  if (dmmStatMaxEl) dmmStatMaxEl.innerText = '--';
+  if (dmmStatAvgEl) dmmStatAvgEl.innerText = '--';
+  if (dmmStatRelEl) dmmStatRelEl.innerText = '0.000';
+}
+
+// Mode Selection Buttons
+document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-dmm-mode').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    dmmMode = btn.dataset.mode;
+    dmmUnit = btn.dataset.unit;
+    dmmSubtype = btn.dataset.subtype;
+
+    if (tagDmmSubtype) tagDmmSubtype.innerText = dmmSubtype;
+    if (dmmUnitEl) dmmUnitEl.innerText = dmmUnit;
+
+    resetDmmStats();
+    stopBuzzer();
+    updateDmmReading();
+  });
+});
+
+// Softkeys
+btnDmmHold?.addEventListener('click', () => {
+  dmmHold = !dmmHold;
+  btnDmmHold.classList.toggle('active', dmmHold);
+  tagDmmHold.classList.toggle('active', dmmHold);
+  showToast(dmmHold ? 'HOLD: Messwert eingefroren' : 'HOLD: Deaktiviert');
+});
+
+btnDmmRel?.addEventListener('click', () => {
+  dmmRel = !dmmRel;
+  btnDmmRel.classList.toggle('active', dmmRel);
+  tagDmmRel.classList.toggle('active', dmmRel);
+
+  if (dmmRel) {
+    const cur = parseFloat(dmmValueEl.innerText) || 0;
+    dmmRelBaseline = cur;
+    showToast(`REL Δ: Nullpunkt auf ${cur} ${dmmUnit} gesetzt`);
+  } else {
+    dmmRelBaseline = 0;
+    showToast('REL Δ: Deaktiviert');
+  }
+});
+
+btnDmmRange?.addEventListener('click', () => {
+  dmmAuto = !dmmAuto;
+  tagDmmAuto.classList.toggle('active', dmmAuto);
+  btnDmmRange.innerText = dmmAuto ? 'RANGE: AUTO' : 'RANGE: MAN';
+  btnDmmRange.classList.toggle('active', !dmmAuto);
+});
+
+btnDmmResetStats?.addEventListener('click', () => {
+  resetDmmStats();
+  showToast('Statistiken zurückgesetzt');
+});
+
+btnDmmBuzzer?.addEventListener('click', () => {
+  dmmBuzzerEnabled = !dmmBuzzerEnabled;
+  btnDmmBuzzer.classList.toggle('active', dmmBuzzerEnabled);
+  tagDmmBuzzer.classList.toggle('active', dmmBuzzerEnabled);
+  btnDmmBuzzer.innerText = dmmBuzzerEnabled ? 'BUZZER ON' : 'BUZZER OFF';
+  if (!dmmBuzzerEnabled) stopBuzzer();
+  showToast(dmmBuzzerEnabled ? 'Durchgangs-Buzzer aktiv' : 'Buzzer stummgeschaltet');
+});
+
+// Logger Controls
+btnDmmRun?.addEventListener('click', () => {
+  dmmLoggerRunning = !dmmLoggerRunning;
+  btnDmmRun.innerText = dmmLoggerRunning ? 'LOGGER: STOP' : 'LOGGER: START';
+  btnDmmRun.style.color = dmmLoggerRunning ? '' : '#10b981';
+  showToast(dmmLoggerRunning ? 'Messwert-Schreiber fortgesetzt' : 'Messwert-Schreiber pausiert');
+});
+
+btnDmmClearLogger?.addEventListener('click', () => {
+  dmmHistory = [];
+  dmmLogCounter = 0;
+  if (dmmTableBody) dmmTableBody.innerHTML = '';
+  if (lblLogCount) lblLogCount.innerText = '0';
+  resetDmmStats();
+  renderDmmCanvas();
+  showToast('Datenlogger geleert');
+});
+
+selDmmRate?.addEventListener('change', (e) => {
+  dmmLogRate = parseInt(e.target.value, 10);
+  restartDmmLogLoop();
+});
+
+selDmmWindow?.addEventListener('change', (e) => {
+  dmmTimeWindow = parseInt(e.target.value, 10);
+  renderDmmCanvas();
+});
+
+// CSV Export
+btnDmmExportCsv?.addEventListener('click', async () => {
+  if (dmmHistory.length === 0) {
+    showToast('Keine Messdaten zum Exportieren vorhanden');
+    return;
+  }
+
+  let csv = 'Nr;Zeitstempel;Messbereich;Messwert;Einheit;Status\r\n';
+  dmmHistory.forEach((item, idx) => {
+    csv += `${idx + 1};${item.timeStr};${item.mode};${item.value.toFixed(4).replace('.', ',')};${item.unit};${item.status}\r\n`;
+  });
+
+  const filename = `DMM_Messung_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+  const res = await window.api.saveCsv(filename, csv);
+  if (res && res.success) {
+    showToast(`Messreihe gespeichert in: ${res.filePath}`);
+  }
+});
+
+// Value computation based on simulation slider & current mode
+function calculateDmmValue() {
+  const simRaw = parseFloat(rngDmmSim ? rngDmmSim.value : 250);
+  const now = Date.now();
+  const noise = (Math.random() - 0.5) * 0.006;
+
+  let val = 0;
+  let status = 'OK';
+  let formatted = '0.000';
+  let barPercent = 0;
+  let sign = '';
+
+  switch (dmmMode) {
+    case 'DCV': {
+      // 0 to 50.000 V
+      val = (simRaw / 1000) * 48.0 + noise;
+      val = Math.max(0, val);
+      formatted = val.toFixed(3);
+      barPercent = (val / 50) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} V`;
+      break;
+    }
+    case 'ACV': {
+      // 0 to 250.00 V True RMS with slight mains frequency wobble
+      val = (simRaw / 1000) * 230.0 + (Math.sin(now / 400) * 0.15) + noise * 5;
+      val = Math.max(0, val);
+      formatted = val.toFixed(2);
+      barPercent = (val / 250) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} V AC`;
+      break;
+    }
+    case 'DCMV': {
+      // 0 to 999.9 mV
+      val = (simRaw / 1000) * 999.0 + noise * 10;
+      formatted = val.toFixed(1);
+      barPercent = (val / 1000) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} mV`;
+      break;
+    }
+    case 'DCA': {
+      // 0 to 10.000 A
+      val = (simRaw / 1000) * 9.99 + noise;
+      val = Math.max(0, val);
+      formatted = val.toFixed(3);
+      barPercent = (val / 10) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} A`;
+      break;
+    }
+    case 'ACA': {
+      val = (simRaw / 1000) * 9.99 + noise * 2;
+      val = Math.max(0, val);
+      formatted = val.toFixed(3);
+      barPercent = (val / 10) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} A AC`;
+      break;
+    }
+    case 'MA': {
+      // 0 to 500.0 mA
+      val = (simRaw / 1000) * 499.0 + noise * 5;
+      formatted = val.toFixed(2);
+      barPercent = (val / 500) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} mA`;
+      break;
+    }
+    case 'RES': {
+      // 0 to 10.000 kOhm
+      val = (simRaw / 1000) * 10000.0;
+      if (val >= 9950) {
+        formatted = '0.L';
+        status = 'OVERLOAD';
+        barPercent = 100;
+        if (lblSimValue) lblSimValue.innerText = 'Offen (O.L)';
+      } else {
+        formatted = (val / 1000).toFixed(3);
+        dmmUnit = 'kΩ';
+        if (dmmUnitEl) dmmUnitEl.innerText = 'kΩ';
+        barPercent = (val / 10000) * 100;
+        if (lblSimValue) lblSimValue.innerText = `${formatted} kΩ`;
+      }
+      break;
+    }
+    case 'CAP': {
+      // 0 to 100.0 uF
+      val = (simRaw / 1000) * 100.0 + noise;
+      val = Math.max(0, val);
+      formatted = val.toFixed(2);
+      barPercent = (val / 100) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} µF`;
+      break;
+    }
+    case 'CONT': {
+      // Continuity: buzzer if < 50 Ohm
+      val = (simRaw / 1000) * 200.0;
+      if (val < 50) {
+        formatted = val.toFixed(1);
+        status = 'BUZZ';
+        playBuzzer(2400);
+        if (lblSimValue) lblSimValue.innerText = `${formatted} Ω (Durchgang!)`;
+      } else {
+        stopBuzzer();
+        formatted = val >= 195 ? '0.L' : val.toFixed(1);
+        if (lblSimValue) lblSimValue.innerText = formatted === '0.L' ? 'Offen' : `${formatted} Ω`;
+      }
+      barPercent = Math.min(100, (val / 200) * 100);
+      break;
+    }
+    case 'DIODE': {
+      stopBuzzer();
+      val = (simRaw / 1000) * 2.5;
+      if (val >= 2.4) {
+        formatted = '0.L';
+        status = 'OPEN';
+        barPercent = 100;
+        if (lblSimValue) lblSimValue.innerText = 'Sperrrichtung (O.L)';
+      } else {
+        formatted = val.toFixed(3);
+        barPercent = (val / 2.5) * 100;
+        if (lblSimValue) lblSimValue.innerText = `${formatted} V (Flussspannung)`;
+      }
+      break;
+    }
+    case 'FREQ': {
+      stopBuzzer();
+      val = (simRaw / 1000) * 50000.0 + noise * 10;
+      formatted = val >= 1000 ? (val / 1000).toFixed(3) : val.toFixed(1);
+      dmmUnit = val >= 1000 ? 'kHz' : 'Hz';
+      if (dmmUnitEl) dmmUnitEl.innerText = dmmUnit;
+      barPercent = (val / 50000) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} ${dmmUnit}`;
+      break;
+    }
+    case 'TEMP': {
+      stopBuzzer();
+      val = -20 + (simRaw / 1000) * 320.0 + noise * 5;
+      formatted = val.toFixed(1);
+      barPercent = ((val + 20) / 320) * 100;
+      if (lblSimValue) lblSimValue.innerText = `${formatted} °C`;
+      break;
+    }
+  }
+
+  return { val, formatted, sign, barPercent, status };
+}
+
+// Update DMM UI & Logger
+function updateDmmReading() {
+  const now = new Date();
+  if (dmmClockEl) dmmClockEl.innerText = now.toTimeString().split(' ')[0];
+
+  const reading = calculateDmmValue();
+
+  if (!dmmHold) {
+    if (dmmSignEl) dmmSignEl.innerText = reading.sign;
+    if (dmmValueEl) dmmValueEl.innerText = reading.formatted;
+    if (dmmBargraphFill) dmmBargraphFill.style.width = `${Math.min(100, Math.max(0, reading.barPercent))}%`;
+
+    // Compute stats
+    if (reading.status !== 'OVERLOAD' && reading.status !== 'OPEN' && reading.formatted !== '0.L') {
+      const num = reading.val;
+      if (dmmStats.min === null || num < dmmStats.min) dmmStats.min = num;
+      if (dmmStats.max === null || num > dmmStats.max) dmmStats.max = num;
+      dmmStats.count++;
+      dmmStats.sum += num;
+
+      if (dmmStatMinEl) dmmStatMinEl.innerText = dmmStats.min.toFixed(3);
+      if (dmmStatMaxEl) dmmStatMaxEl.innerText = dmmStats.max.toFixed(3);
+      if (dmmStatAvgEl) dmmStatAvgEl.innerText = (dmmStats.sum / dmmStats.count).toFixed(3);
+
+      if (dmmRel && dmmStatRelEl) {
+        const delta = num - dmmRelBaseline;
+        dmmStatRelEl.innerText = (delta >= 0 ? '+' : '') + delta.toFixed(3);
+      }
+    }
+  }
+
+  // Push to Logger if active
+  if (dmmLoggerRunning && !dmmHold) {
+    dmmLogCounter++;
+    const entry = {
+      id: dmmLogCounter,
+      time: now.getTime(),
+      timeStr: now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0'),
+      mode: dmmMode,
+      value: reading.val,
+      displayStr: reading.formatted,
+      unit: dmmUnit,
+      status: reading.status
+    };
+
+    dmmHistory.push(entry);
+
+    const maxEntries = 2000;
+    if (dmmHistory.length > maxEntries) {
+      dmmHistory.shift();
+    }
+
+    if (lblLogCount) lblLogCount.innerText = dmmHistory.length;
+
+    // Add row to table (prepend latest)
+    if (dmmTableBody) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${entry.id}</td>
+        <td>${entry.timeStr}</td>
+        <td>${entry.mode}</td>
+        <td class="val-cyan">${entry.displayStr}</td>
+        <td>${entry.unit}</td>
+        <td><span class="badge" style="font-size:10px; padding:1px 5px;">${entry.status}</span></td>
+      `;
+      dmmTableBody.insertBefore(tr, dmmTableBody.firstChild);
+      if (dmmTableBody.children.length > 100) {
+        dmmTableBody.removeChild(dmmTableBody.lastChild);
+      }
+    }
+
+    renderDmmCanvas();
+  }
+}
+
+// Render Real-time Trend Canvas
+function renderDmmCanvas() {
+  if (!dmmCanvas || !dmmCtx) return;
+  const w = dmmCanvas.width;
+  const h = dmmCanvas.height;
+
+  // Clear Background
+  dmmCtx.fillStyle = '#050813';
+  dmmCtx.fillRect(0, 0, w, h);
+
+  // Draw Grid
+  dmmCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  dmmCtx.lineWidth = 1;
+
+  for (let x = 0; x < w; x += 50) {
+    dmmCtx.beginPath();
+    dmmCtx.moveTo(x, 0);
+    dmmCtx.lineTo(x, h);
+    dmmCtx.stroke();
+  }
+
+  for (let y = 0; y < h; y += 40) {
+    dmmCtx.beginPath();
+    dmmCtx.moveTo(0, y);
+    dmmCtx.lineTo(w, y);
+    dmmCtx.stroke();
+  }
+
+  if (dmmHistory.length < 2) return;
+
+  // Filter history to current time window
+  const now = Date.now();
+  const windowMs = dmmTimeWindow * 1000;
+  const visible = dmmHistory.filter(pt => (now - pt.time) <= windowMs);
+
+  if (visible.length < 2) return;
+
+  // Determine min & max for auto-scaling
+  let minVal = Infinity;
+  let maxVal = -Infinity;
+  visible.forEach(pt => {
+    if (pt.value < minVal) minVal = pt.value;
+    if (pt.value > maxVal) maxVal = pt.value;
+  });
+
+  const range = maxVal - minVal;
+  const pad = range === 0 ? 1 : range * 0.15;
+  const plotMin = minVal - pad;
+  const plotMax = maxVal + pad;
+  const plotRange = plotMax - plotMin;
+
+  // Labels
+  dmmCtx.fillStyle = '#64748b';
+  dmmCtx.font = '10px "Cascadia Code", Consolas, monospace';
+  dmmCtx.fillText(`Max: ${maxVal.toFixed(3)} ${dmmUnit}`, 10, 16);
+  dmmCtx.fillText(`Min: ${minVal.toFixed(3)} ${dmmUnit}`, 10, h - 8);
+
+  // Path
+  dmmCtx.beginPath();
+  visible.forEach((pt, idx) => {
+    const timeDelta = now - pt.time;
+    const x = w - (timeDelta / windowMs) * (w - 40);
+    const y = h - ((pt.value - plotMin) / plotRange) * (h - 40) - 20;
+
+    if (idx === 0) dmmCtx.moveTo(x, y);
+    else dmmCtx.lineTo(x, y);
+  });
+
+  // Glowing line
+  dmmCtx.strokeStyle = '#00f2fe';
+  dmmCtx.lineWidth = 2.2;
+  dmmCtx.shadowColor = 'rgba(0, 242, 254, 0.7)';
+  dmmCtx.shadowBlur = 10;
+  dmmCtx.stroke();
+
+  // Gradient fill area
+  const lastX = w;
+  const firstPtTime = now - visible[0].time;
+  const firstX = w - (firstPtTime / windowMs) * (w - 40);
+
+  dmmCtx.lineTo(lastX, h);
+  dmmCtx.lineTo(firstX, h);
+  dmmCtx.closePath();
+
+  const grad = dmmCtx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(0, 242, 254, 0.25)');
+  grad.addColorStop(1, 'rgba(0, 242, 254, 0.0)');
+  dmmCtx.fillStyle = grad;
+  dmmCtx.fill();
+
+  dmmCtx.shadowBlur = 0;
+
+  // Current point glow dot
+  const latest = visible[visible.length - 1];
+  const curY = h - ((latest.value - plotMin) / plotRange) * (h - 40) - 20;
+  dmmCtx.beginPath();
+  dmmCtx.arc(w - 10, curY, 4, 0, Math.PI * 2);
+  dmmCtx.fillStyle = '#fb923c';
+  dmmCtx.shadowColor = 'rgba(251, 146, 60, 0.8)';
+  dmmCtx.shadowBlur = 8;
+  dmmCtx.fill();
+  dmmCtx.shadowBlur = 0;
+}
+
+// Realtime Timer loop for DMM
+function restartDmmLogLoop() {
+  if (dmmLogTimer) clearInterval(dmmLogTimer);
+  dmmLogTimer = setInterval(updateDmmReading, dmmLogRate);
+}
+restartDmmLogLoop();
+
+// Listener on simulation range slider
+rngDmmSim?.addEventListener('input', updateDmmReading);
 
 // ==========================================
 // 1. OSZILLOSKOP SIMULATOR & LABOR

@@ -46,13 +46,39 @@
           </svg>
         </button>
       </div>
+
+      <!-- 3-IN-1 INSTRUMENT SELECTOR -->
+      <div class="instrument-switch" id="instrumentSwitch">
+        <button class="btn-instrument active" data-tab="dmm">
+          <span class="inst-icon">⚡</span>
+          <span class="inst-name">Multimeter</span>
+        </button>
+        <button class="btn-instrument" data-tab="scope">
+          <span class="inst-icon">🔬</span>
+          <span class="inst-name">Oszilloskop</span>
+        </button>
+        <button class="btn-instrument" data-tab="generator">
+          <span class="inst-icon">〰️</span>
+          <span class="inst-name">DDS Generator</span>
+        </button>
+      </div>
     </header>
 
     <!-- MAIN BODY -->
     <div class="app-body">
       <!-- SIDEBAR -->
       <nav class="sidebar">
-        <button class="nav-item active" data-tab="scope">
+        <button class="nav-item active" data-tab="dmm">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="3" ry="3"></rect>
+            <rect x="7" y="5" width="10" height="5" rx="1"></rect>
+            <circle cx="9" cy="14" r="1.5"></circle>
+            <circle cx="15" cy="14" r="1.5"></circle>
+            <path d="M12 17v3"></path>
+          </svg>
+          <span>Digital-Multimeter</span>
+        </button>
+        <button class="nav-item" data-tab="scope">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
           </svg>
@@ -102,8 +128,176 @@
       <!-- CONTENT PANELS -->
       <main class="content-area">
 
+        <!-- TAB 0: DIGITAL-MULTIMETER & DATENLOGGER (HAUPT-INSTRUMENT) -->
+        <section class="tab-panel active" id="tab-dmm">
+          <div class="panel-header">
+            <div>
+              <h2>Digital-Multimeter & Datenlogger</h2>
+              <p class="subtitle">10.000 Counts True-RMS Digitalmultimeter, Echtzeit-Kurvenschreiber & Labor-Protokoll</p>
+            </div>
+            <div class="controls-toolbar">
+              <button class="btn-action" id="btnDmmRun">LOGGER: STOP</button>
+              <button class="btn-action secondary" id="btnDmmExportCsv">Messreihe als CSV</button>
+              <button class="btn-action secondary" id="btnDmmClearLogger">Zurücksetzen</button>
+            </div>
+          </div>
+
+          <div class="dmm-layout">
+            <!-- VIRTUAL MULTIMETER UNIT -->
+            <div class="dmm-unit">
+              <!-- DIGITAL LCD / OLED SCREEN -->
+              <div class="dmm-screen">
+                <div class="dmm-screen-top">
+                  <div class="dmm-mode-tags">
+                    <span class="dmm-tag active" id="tagDmmSubtype">DC</span>
+                    <span class="dmm-tag active" id="tagDmmAuto">AUTO</span>
+                    <span class="dmm-tag" id="tagDmmHold">HOLD</span>
+                    <span class="dmm-tag" id="tagDmmRel">REL Δ</span>
+                    <span class="dmm-tag" id="tagDmmBuzzer">BUZZER 🔔</span>
+                  </div>
+                  <div class="dmm-clock" id="dmmClock">--:--:--</div>
+                </div>
+
+                <div class="dmm-screen-main">
+                  <div class="dmm-digits-wrapper">
+                    <span class="dmm-sign" id="dmmSign"></span>
+                    <span class="dmm-value" id="dmmValue">0.000</span>
+                  </div>
+                  <span class="dmm-unit-badge" id="dmmUnit">V</span>
+                </div>
+
+                <!-- ANALOG BARGRAPH -->
+                <div class="dmm-bargraph-container">
+                  <div class="dmm-bargraph-scale">
+                    <span>0</span>
+                    <span>2</span>
+                    <span>4</span>
+                    <span>6</span>
+                    <span>8</span>
+                    <span>10k</span>
+                  </div>
+                  <div class="dmm-bargraph-track">
+                    <div class="dmm-bargraph-fill" id="dmmBargraphFill"></div>
+                  </div>
+                </div>
+
+                <!-- SUB-READOUT STATS -->
+                <div class="dmm-screen-substats">
+                  <div class="substat"><span class="lbl">MIN:</span> <b id="dmmStatMin">--</b></div>
+                  <div class="substat"><span class="lbl">MAX:</span> <b id="dmmStatMax">--</b></div>
+                  <div class="substat"><span class="lbl">AVG:</span> <b id="dmmStatAvg">--</b></div>
+                  <div class="substat"><span class="lbl">REL Δ:</span> <b id="dmmStatRel">0.000</b></div>
+                </div>
+              </div>
+
+              <!-- DMM FUNCTION KEYS MATRIX -->
+              <div class="dmm-functions-box">
+                <div class="dmm-section-title">Messbereiche (Funktionswahl)</div>
+                <div class="dmm-modes-grid">
+                  <button class="btn-dmm-mode active" data-mode="DCV" data-unit="V" data-subtype="DC">DC V</button>
+                  <button class="btn-dmm-mode" data-mode="ACV" data-unit="V" data-subtype="AC TRMS">AC V</button>
+                  <button class="btn-dmm-mode" data-mode="DCMV" data-unit="mV" data-subtype="DC">DC mV</button>
+                  <button class="btn-dmm-mode" data-mode="DCA" data-unit="A" data-subtype="DC">DC A</button>
+                  <button class="btn-dmm-mode" data-mode="ACA" data-unit="A" data-subtype="AC TRMS">AC A</button>
+                  <button class="btn-dmm-mode" data-mode="MA" data-unit="mA" data-subtype="DC">mA / µA</button>
+                  <button class="btn-dmm-mode" data-mode="RES" data-unit="Ω" data-subtype="RES">Widerstand Ω</button>
+                  <button class="btn-dmm-mode" data-mode="CAP" data-unit="µF" data-subtype="CAP">Kapazität F</button>
+                  <button class="btn-dmm-mode" data-mode="CONT" data-unit="Ω" data-subtype="CONT">Durchgang 🔔</button>
+                  <button class="btn-dmm-mode" data-mode="DIODE" data-unit="V" data-subtype="DIODE">Diode ▶|</button>
+                  <button class="btn-dmm-mode" data-mode="FREQ" data-unit="Hz" data-subtype="FREQ">Frequenz Hz</button>
+                  <button class="btn-dmm-mode" data-mode="TEMP" data-unit="°C" data-subtype="TEMP">Temperatur °C</button>
+                </div>
+
+                <div class="dmm-softkeys-row">
+                  <button class="btn-dmm-soft" id="btnDmmHold">HOLD</button>
+                  <button class="btn-dmm-soft" id="btnDmmRel">REL Δ</button>
+                  <button class="btn-dmm-soft" id="btnDmmRange">RANGE: AUTO</button>
+                  <button class="btn-dmm-soft" id="btnDmmResetStats">RESET MIN/MAX</button>
+                  <button class="btn-dmm-soft active" id="btnDmmBuzzer">BUZZER ON</button>
+                </div>
+
+                <!-- SIMULATION & LIVE TEST DIAL -->
+                <div class="dmm-simulation-box">
+                  <div class="sim-header">
+                    <span>Prüfwert / Messwert-Regler:</span>
+                    <span id="lblSimValue">12.38 V</span>
+                  </div>
+                  <input type="range" id="rngDmmSim" min="0" max="1000" value="248" step="1">
+                  <div class="sim-hints">
+                    <span>0</span>
+                    <span>Echtzeit-Signaleingang / Prüflast für den Schreiber</span>
+                    <span>Max</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- REALTIME DATA LOGGER & TREND GRAPH -->
+            <div class="dmm-logger-panel">
+              <div class="dmm-chart-box">
+                <div class="dmm-chart-header">
+                  <div class="chart-title">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <span>Echtzeit-Kurvenschreiber (Trendplot)</span>
+                  </div>
+                  <div class="chart-options">
+                    <label>Abtastrate:
+                      <select id="selDmmRate">
+                        <option value="100">100 ms (10 Hz)</option>
+                        <option value="250" selected>250 ms (4 Hz)</option>
+                        <option value="500">500 ms (2 Hz)</option>
+                        <option value="1000">1 Sekunde</option>
+                        <option value="2000">2 Sekunden</option>
+                      </select>
+                    </label>
+                    <label>Zeitfenster:
+                      <select id="selDmmWindow">
+                        <option value="30">30 Sek.</option>
+                        <option value="60" selected>60 Sek.</option>
+                        <option value="300">5 Min.</option>
+                        <option value="900">15 Min.</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="dmm-canvas-container">
+                  <canvas id="dmmCanvas" width="700" height="280"></canvas>
+                </div>
+              </div>
+
+              <!-- LOGGED VALUES TABLE -->
+              <div class="dmm-table-box">
+                <div class="dmm-table-header">
+                  <span>Aufgezeichnete Messpunkte (<b id="lblLogCount">0</b> Einträge)</span>
+                  <span class="dmm-table-hint">Scrollbar • Automatische Protokollierung</span>
+                </div>
+                <div class="dmm-table-scroll">
+                  <table class="dmm-table" id="dmmLogTable">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Uhrzeit</th>
+                        <th>Modus</th>
+                        <th>Messwert</th>
+                        <th>Einheit</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dmmTableBody">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- TAB 1: OSZILLOSKOP & LABOR -->
-        <section class="tab-panel active" id="tab-scope">
+        <section class="tab-panel" id="tab-scope">
           <div class="panel-header">
             <h2>Dual-Channel Oszilloskop & Mess-Labor</h2>
             <div class="controls-toolbar">
