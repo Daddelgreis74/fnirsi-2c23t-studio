@@ -250,9 +250,9 @@ Add-Type -TypeDefinition $code
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-    if (this.worker) {
+    if (this.worker && this.worker.pid) {
       try {
-        this.worker.kill();
+        exec(`taskkill /pid ${this.worker.pid} /f /t`);
       } catch (e) {}
       this.worker = null;
     }
