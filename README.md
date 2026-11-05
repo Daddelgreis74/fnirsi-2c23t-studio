@@ -8,6 +8,18 @@
 
 ---
 
+## 📸 Screenshots & Vorschau
+
+| Digital-Multimeter & Datenlogger | Dual-Channel Oszilloskop & Live-Labor |
+|:---:|:---:|
+| ![Digital-Multimeter & Datenlogger](assets/screenshots/dmm_studio.jpg) | ![Dual-Channel Oszilloskop](assets/screenshots/scope_studio.jpg) |
+
+| Arbitrary DDS Waveform Designer |
+|:---:|
+| ![Arbitrary Waveform Designer](assets/screenshots/dds_generator.jpg) |
+
+---
+
 ## 🌟 Features
 
 * **⚡ 10.000 Counts Digital-Multimeter & Datenlogger (DMM Studio):**
@@ -17,10 +29,10 @@
   * Kontinuierlicher Echtzeit-Kurvenschreiber (Trendplot) mit automatischer Skalierung, Min/Max/Avg und einstellbarer Abtastrate (100 ms bis 2 s).
   * 1-Klick CSV-Export der Messreihe für Excel und Berichte.
 * **🔬 Dual-Channel 60 FPS Oszilloskop-Labor:**
-  * Echtzeit-Zweikanal-Darstellung (CH1 Cyan, CH2 Amber) mit Phosphor-Nachleuchteffekt.
+  * Reale Hardware-Live-Telemetrie über USB-CDC (CH1 Gelb oben, CH2 Cyan/Blau unten) mit Hardware-Ground-Markern.
   * Time/Div-Skalierung (500µs – 10ms) und Volts/Div-Regler.
-  * Live FFT-Spektrumanalysator.
-  * Automatische Messwerte ($V_{pp}$, $V_{rms}$, Frequenz).
+  * Live FFT-Spektrumanalysator & Phosphor-Nachleuchteffekt.
+  * Automatische Messwerte ($V_{pp}$, $V_{rms}$, Frequenz) synchron zum physischen Gerät.
 * **⚡ Arbitrary Waveform Studio (OpenScope ARBT Designer):**
   * Interaktiver Kurveneditor: Freihand-Zeichnen mit der Maus oder mathematische Vorlagen (Sinus, Rechteck, Dreieck, Sägezahn, EKG-Puls, Rauschen).
   * 1-Klick-Export direkt als `.CSV` auf den 2C23T für den DDS-Signalgenerator.
