@@ -850,6 +850,104 @@ if (window.api && window.api.onDmmStatus) {
   });
 }
 
+// Raw Serial Monitor & Telemetry Inspector
+const txtDmmSerialLog = document.getElementById('txtDmmSerialLog');
+const chkDmmLogAutoScroll = document.getElementById('chkDmmLogAutoScroll');
+const btnDmmCopyRawLog = document.getElementById('btnDmmCopyRawLog');
+const btnDmmSaveRawLog = document.getElementById('btnDmmSaveRawLog');
+const btnDmmClearRawLog = document.getElementById('btnDmmClearRawLog');
+const inputDmmSerialCmd = document.getElementById('inputDmmSerialCmd');
+const btnDmmSendSerialCmd = document.getElementById('btnDmmSendSerialCmd');
+
+let rawSerialLogLines = [];
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function appendRawSerialLog(type, text, time) {
+  if (!txtDmmSerialLog) return;
+  const t = time || (new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0'));
+  
+  let color = '#38bdf8';
+  let prefix = 'INFO';
+  if (type === 'rx') {
+    color = '#4ade80';
+    prefix = 'RX ←';
+  } else if (type === 'tx') {
+    color = '#facc15';
+    prefix = 'TX →';
+  } else if (type === 'error') {
+    color = '#f87171';
+    prefix = 'ERR ';
+  }
+
+  const lineHtml = `<div style="color:${color}"><span style="color:#64748b;">[${t}]</span> <strong style="color:${color}; font-weight:bold;">${prefix}</strong> ${escapeHtml(text)}</div>`;
+  const plainText = `[${t}] ${prefix} ${text}`;
+  
+  rawSerialLogLines.push(plainText);
+  if (rawSerialLogLines.length > 2000) rawSerialLogLines.shift();
+
+  txtDmmSerialLog.insertAdjacentHTML('beforeend', lineHtml);
+  if (txtDmmSerialLog.children.length > 2000) {
+    txtDmmSerialLog.removeChild(txtDmmSerialLog.firstChild);
+  }
+
+  if (chkDmmLogAutoScroll && chkDmmLogAutoScroll.checked) {
+    txtDmmSerialLog.scrollTop = txtDmmSerialLog.scrollHeight;
+  }
+}
+
+if (window.api && window.api.onDmmLog) {
+  window.api.onDmmLog((logEvent) => {
+    appendRawSerialLog(logEvent.type, logEvent.text, logEvent.time);
+  });
+}
+
+btnDmmSendSerialCmd?.addEventListener('click', async () => {
+  const cmd = inputDmmSerialCmd.value.trim();
+  if (!cmd) return;
+  appendRawSerialLog('tx', cmd);
+  if (window.api && window.api.sendDmmCommand) {
+    const res = await window.api.sendDmmCommand(cmd);
+    if (!res.success) {
+      appendRawSerialLog('error', 'Senden fehlgeschlagen: ' + (res.error || 'Unbekannt'));
+    }
+  }
+  inputDmmSerialCmd.value = '';
+});
+
+inputDmmSerialCmd?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    btnDmmSendSerialCmd?.click();
+  }
+});
+
+btnDmmCopyRawLog?.addEventListener('click', () => {
+  const text = rawSerialLogLines.join('\r\n');
+  navigator.clipboard.writeText(text);
+  showToast('Serial-Log in Zwischenablage kopiert');
+});
+
+btnDmmClearRawLog?.addEventListener('click', () => {
+  rawSerialLogLines = [];
+  if (txtDmmSerialLog) txtDmmSerialLog.innerHTML = '';
+  showToast('Serial-Log geleert');
+});
+
+btnDmmSaveRawLog?.addEventListener('click', async () => {
+  if (rawSerialLogLines.length === 0) {
+    showToast('Keine Log-Einträge vorhanden');
+    return;
+  }
+  const filename = `DMM_Serial_Log_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
+  const content = rawSerialLogLines.join('\r\n');
+  const res = await window.api.saveCsv(filename, content);
+  if (res && res.success) {
+    showToast(`Serial-Log gespeichert: ${res.filePath}`);
+  }
+});
+
 btnDmmSerialConnect?.addEventListener('click', async () => {
   showToast('Suche nach 2C23T COM-Port...');
   if (window.api && window.api.reconnectSerial) {

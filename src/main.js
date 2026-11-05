@@ -71,6 +71,11 @@ function createWindow() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('dmm:serial-status', status);
       }
+    },
+    (logEvent) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-log', logEvent);
+      }
     }
   );
 
@@ -114,6 +119,11 @@ ipcMain.handle('dmm:reconnect-serial', async () => {
     (status) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('dmm:serial-status', status);
+      }
+    },
+    (logEvent) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-log', logEvent);
       }
     }
   );

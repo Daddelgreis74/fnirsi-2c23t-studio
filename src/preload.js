@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
   selectDirectory: () => ipcRenderer.invoke('system:select-directory'),
   onDmmLine: (callback) => ipcRenderer.on('dmm:serial-line', (_event, line) => callback(line)),
   onDmmStatus: (callback) => ipcRenderer.on('dmm:serial-status', (_event, status) => callback(status)),
+  onDmmLog: (callback) => ipcRenderer.on('dmm:serial-log', (_event, log) => callback(log)),
   reconnectSerial: () => ipcRenderer.invoke('dmm:reconnect-serial'),
   sendDmmCommand: (cmd) => ipcRenderer.invoke('dmm:send-command', cmd)
 });
