@@ -181,7 +181,7 @@ Add-Type -TypeDefinition $code
           } else if (trimmed.startsWith('[RX]:')) {
             const rxLine = trimmed.substring(5);
             this.emitLog('rx', rxLine);
-            if (rxLine.startsWith('$DMM,') && this.onLineCallback) {
+            if (this.onLineCallback) {
               this.onLineCallback(rxLine);
             }
           } else if (trimmed.startsWith('[TX]:')) {
