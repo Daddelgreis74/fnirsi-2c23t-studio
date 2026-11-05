@@ -5,8 +5,6 @@ contextBridge.exposeInMainWorld('api', {
   onStatusChange: (callback) => ipcRenderer.on('device:status-changed', (_event, value) => callback(value)),
   getScreenshots: () => ipcRenderer.invoke('device:get-screenshots'),
   saveWaveformCsv: (filename, points) => ipcRenderer.invoke('device:save-waveform', { filename, points }),
-  backupDevice: () => ipcRenderer.invoke('device:backup'),
-  openFirmwareFolder: () => ipcRenderer.invoke('system:open-firmware-folder'),
   openInExplorer: (pathStr) => ipcRenderer.invoke('system:open-explorer', pathStr),
   openFile: (pathStr) => ipcRenderer.invoke('system:open-file', pathStr),
   saveCsv: (defaultName, content) => ipcRenderer.invoke('system:save-csv', { defaultName, content }),

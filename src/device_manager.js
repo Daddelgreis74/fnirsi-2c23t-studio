@@ -179,40 +179,6 @@ class DeviceManager {
       points: pointsArray.length
     };
   }
-
-  // Perform full backup of 2C23T into a user or app folder
-  async backupDevice(destDir) {
-    if (!this.currentStatus.connected || !this.currentStatus.driveLetter) {
-      throw new Error('Kein 2C23T Gerät gefunden!');
-    }
-
-    const root = this.currentStatus.driveLetter;
-    const now = new Date();
-    const folderName = `Backup_2C23T_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-    const targetFolder = path.join(destDir, folderName);
-
-    fs.mkdirSync(targetFolder, { recursive: true });
-
-    const files = fs.readdirSync(root);
-    const copied = [];
-
-    for (const f of files) {
-      const src = path.join(root, f);
-      const dst = path.join(targetFolder, f);
-      const stat = fs.statSync(src);
-      if (stat.isFile()) {
-        fs.copyFileSync(src, dst);
-        copied.push(f);
-      }
-    }
-
-    return {
-      success: true,
-      targetFolder,
-      fileCount: copied.length,
-      files: copied
-    };
-  }
 }
 
 module.exports = new DeviceManager();

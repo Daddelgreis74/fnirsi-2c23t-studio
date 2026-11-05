@@ -72,20 +72,6 @@ ipcMain.handle('device:save-waveform', async (_event, { filename, points }) => {
   return deviceManager.saveWaveformCsv(filename, points);
 });
 
-ipcMain.handle('device:backup', async () => {
-  const defaultDir = path.join(app.getPath('downloads'), '2C23T_Backups');
-  return await deviceManager.backupDevice(defaultDir);
-});
-
-ipcMain.handle('system:open-firmware-folder', async () => {
-  const fwDir = path.join(__dirname, '../assets/firmwares');
-  if (fs.existsSync(fwDir)) {
-    await shell.openPath(fwDir);
-    return true;
-  }
-  return false;
-});
-
 ipcMain.handle('system:open-explorer', async (_event, targetPath) => {
   if (targetPath) {
     if (fs.existsSync(targetPath)) {

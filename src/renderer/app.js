@@ -1034,33 +1034,3 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
     alert(err.message || 'Fehler beim Speichern');
   }
 });
-
-// ==========================================
-// 4. FIRMWARE ARCHIV & ANLEITUNGEN
-// ==========================================
-document.getElementById('btnOpenFwDir')?.addEventListener('click', () => {
-  window.api.openFirmwareFolder();
-});
-
-document.querySelectorAll('.btn-open-fw').forEach(btn => {
-  btn.addEventListener('click', () => {
-    window.api.openFirmwareFolder();
-  });
-});
-
-// ==========================================
-// 5. BACKUP MANAGER
-// ==========================================
-document.getElementById('btnCreateBackup').addEventListener('click', async () => {
-  try {
-    showToast('Erstelle Komplett-Backup...');
-    const res = await window.api.backupDevice();
-    alert(`Backup erfolgreich erstellt!\n\n${res.fileCount} Dateien gesichert in:\n${res.targetFolder}`);
-  } catch (err) {
-    alert(err.message || 'Fehler beim Erstellen des Backups');
-  }
-});
-
-document.getElementById('btnOpenBackupFolder').addEventListener('click', () => {
-  window.api.openInExplorer('C:\\Users\\dadde\\Downloads\\2C23T_Backups');
-});

@@ -10,25 +10,23 @@
 
 ## 🌟 Features
 
-* **🔬 Dual-Channel 60 FPS Oscilloscope Simulator & Lab:**
-  * Real-time dual trace visualization (CH1 Cyan, CH2 Amber) with phosphor persistence effect.
-  * Time/Div scaling (500µs – 10ms) and Volts/Div controls.
-  * Real-Time FFT Spectrum Analyzer view.
-  * Live calculated signal parameters ($V_{pp}$, $V_{rms}$, frequency).
-* **📸 Live Screenshot & Waveform Archiv:**
-  * Auto-detects and synchronizes all `.bmp` screenshots captured with the 2C23T's `SAVE` button.
-  * Built-in viewer with zoom, details, and 1-click PNG/PDF export.
+* **⚡ 10.000 Counts Digital-Multimeter & Datenlogger (DMM Studio):**
+  * Großes Digitaldisplay im OLED-Stil mit 12 umschaltbaren Messbereichen (DC V, AC V True-RMS, DC mV, DC A, AC A, mA/µA, Widerstand Ω, Kapazität F, Durchgang 🔔, Diodentest ▶|, Frequenz Hz, Temperatur °C).
+  * Dynamischer Analog-Bargraph mit Skala und Reaktions-Farbverlauf.
+  * Akustischer Durchgangsprüfer (Piezo-Buzzer) direkt über den PC.
+  * Kontinuierlicher Echtzeit-Kurvenschreiber (Trendplot) mit automatischer Skalierung, Min/Max/Avg und einstellbarer Abtastrate (100 ms bis 2 s).
+  * 1-Klick CSV-Export der Messreihe für Excel und Berichte.
+* **🔬 Dual-Channel 60 FPS Oszilloskop-Labor:**
+  * Echtzeit-Zweikanal-Darstellung (CH1 Cyan, CH2 Amber) mit Phosphor-Nachleuchteffekt.
+  * Time/Div-Skalierung (500µs – 10ms) und Volts/Div-Regler.
+  * Live FFT-Spektrumanalysator.
+  * Automatische Messwerte ($V_{pp}$, $V_{rms}$, Frequenz).
 * **⚡ Arbitrary Waveform Studio (OpenScope ARBT Designer):**
-  * Visual interactive wave editor: draw custom curves with your mouse or select mathematical presets (Sine, Half-Sine, Square, Sawtooth, Triangle, ECG Cardiac Pulse, Exponential, Noise).
-  * 1-Click Export directly onto the 2C23T's root drive as `.CSV` for immediate DDS playback in OpenScope.
-* **🛠️ Firmware-Archiv & Sicherer Recovery Guide:**
-  * Geprüfte Binärdateien direkt im Zugriff:
-    1. **FNIRSI Stock V2.1.0** (Offizielle Werks-Firmware für HW V0.4 Gowin FPGA, Base `0x08007000`)
-    2. **OpenScope v2026.10.1** (Modulares Open-Source OS für HW 4.0)
-  * Schneller 1-Klick-Zugriff auf den lokalen Firmware-Ordner zur sicheren Übertragung per Explorer Drag-and-Drop (schützt vor Übertragungsabbrüchen virtueller IAP-Laufwerke).
-  * Integrierte Unbrick- und Hardware-Reset-Anleitung für den Bootloader.
-* **💾 Bootloader & Full Device Backup Manager:**
-  * Sichert Bootloader (`boot_hw4.bin`, CRC32 `2ACD97AB`), Kalibrierungsdaten und Screenshots in zeitgestempelten Archiven.
+  * Interaktiver Kurveneditor: Freihand-Zeichnen mit der Maus oder mathematische Vorlagen (Sinus, Rechteck, Dreieck, Sägezahn, EKG-Puls, Rauschen).
+  * 1-Klick-Export direkt als `.CSV` auf den 2C23T für den DDS-Signalgenerator.
+* **📸 Live Screenshot- & Aufnahmen-Archiv:**
+  * Automatische Erkennung aller mit der `SAVE`-Taste des 2C23T aufgenommenen Screenshots (`.BMP`).
+  * Detailansicht, Zoom und 1-Klick-Export nach PNG.
 
 ---
 
