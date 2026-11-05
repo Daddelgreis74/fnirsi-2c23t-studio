@@ -2,6 +2,21 @@
 
 let currentDeviceStatus = null;
 let scopeRunning = true;
+let liveScopeWave1 = null;
+let liveScopeWave2 = null;
+let lastScopeWaveTime = 0;
+let liveScopeMeta = {
+  tb: '1ms',
+  v1: '1V',
+  v2: '1V',
+  f1: 0,
+  vpp1: 0,
+  f2: 0,
+  vpp2: 0,
+  running: true,
+  ch1En: true,
+  ch2En: true
+};
 let activeWavePreset = 'sine';
 let wavePoints = 64;
 let maxMv = 2500;
@@ -752,9 +767,144 @@ function processLiveDmmLine(line) {
 
 
 // Wire up automatic Main-Process Serial IPC streaming
+function updateScopeMetadataUI() {
+  const btnRun = document.getElementById('btnScopeRun');
+  if (btnRun) {
+    scopeRunning = liveScopeMeta.running;
+    btnRun.innerText = scopeRunning ? 'STOP' : 'RUN';
+    btnRun.style.color = scopeRunning ? '' : '#ef4444';
+  }
+
+  const statCh1Vpp = document.getElementById('statCh1Vpp');
+  const statCh1Freq = document.getElementById('statCh1Freq');
+  const statCh1Vrms = document.getElementById('statCh1Vrms');
+  const lblCh1Scale = document.getElementById('lblCh1Scale');
+
+  if (statCh1Vpp) {
+    const vppV = (liveScopeMeta.vpp1 / 1000).toFixed(2);
+    statCh1Vpp.innerText = `${vppV} Vpp`;
+    if (statCh1Vrms) statCh1Vrms.innerText = `${(vppV * 0.35355).toFixed(2)} Vrms`;
+  }
+  if (statCh1Freq) {
+    if (liveScopeMeta.f1 >= 1000000) {
+      statCh1Freq.innerText = `${(liveScopeMeta.f1 / 1000000).toFixed(3)} MHz`;
+    } else if (liveScopeMeta.f1 >= 1000) {
+      statCh1Freq.innerText = `${(liveScopeMeta.f1 / 1000).toFixed(2)} kHz`;
+    } else {
+      statCh1Freq.innerText = `${liveScopeMeta.f1} Hz`;
+    }
+  }
+  if (lblCh1Scale && liveScopeMeta.v1) lblCh1Scale.innerText = `${liveScopeMeta.v1}/div`;
+
+  const statCh2Vpp = document.getElementById('statCh2Vpp');
+  const statCh2Freq = document.getElementById('statCh2Freq');
+  const statCh2Vrms = document.getElementById('statCh2Vrms');
+  const lblCh2Scale = document.getElementById('lblCh2Scale');
+
+  if (statCh2Vpp) {
+    const vppV2 = (liveScopeMeta.vpp2 / 1000).toFixed(2);
+    statCh2Vpp.innerText = `${vppV2} Vpp`;
+    if (statCh2Vrms) statCh2Vrms.innerText = `${(vppV2 * 0.35355).toFixed(2)} Vrms`;
+  }
+  if (statCh2Freq) {
+    if (liveScopeMeta.f2 >= 1000000) {
+      statCh2Freq.innerText = `${(liveScopeMeta.f2 / 1000000).toFixed(3)} MHz`;
+    } else if (liveScopeMeta.f2 >= 1000) {
+      statCh2Freq.innerText = `${(liveScopeMeta.f2 / 1000).toFixed(2)} kHz`;
+    } else {
+      statCh2Freq.innerText = `${liveScopeMeta.f2} Hz`;
+    }
+  }
+  if (lblCh2Scale && liveScopeMeta.v2) lblCh2Scale.innerText = `${liveScopeMeta.v2}/div`;
+}
+
+function processLiveSerialLine(line) {
+  if (!line || typeof line !== 'string') return;
+  line = line.trim();
+
+  // Mode announcement
+  if (line.startsWith('$MODE,')) {
+    const parts = line.split(',');
+    if (parts.length >= 2) {
+      const mode = parts[1].trim().toUpperCase();
+      if (mode === 'SCOPE') {
+        switchTab('scope');
+      } else if (mode === 'DMM') {
+        switchTab('dmm');
+      } else if (mode === 'GEN') {
+        switchTab('generator');
+      }
+    }
+    return;
+  }
+
+  // DMM telemetry
+  if (line.startsWith('$DMM,')) {
+    processLiveDmmLine(line);
+    const activeTab = document.querySelector('.nav-item.active');
+    if (activeTab && activeTab.dataset.tab === 'scope') {
+      switchTab('dmm');
+    }
+    return;
+  }
+
+  // Scope Metadata: $SCOPE,<tb>,<v1>,<v2>,<f1>,<vpp1>,<f2>,<vpp2>,<run>,<ch1_en>,<ch2_en>
+  if (line.startsWith('$SCOPE,')) {
+    const parts = line.split(',');
+    if (parts.length >= 11) {
+      liveScopeMeta.tb = parts[1].trim();
+      liveScopeMeta.v1 = parts[2].trim();
+      liveScopeMeta.v2 = parts[3].trim();
+      liveScopeMeta.f1 = parseInt(parts[4], 10) || 0;
+      liveScopeMeta.vpp1 = parseInt(parts[5], 10) || 0;
+      liveScopeMeta.f2 = parseInt(parts[6], 10) || 0;
+      liveScopeMeta.vpp2 = parseInt(parts[7], 10) || 0;
+      liveScopeMeta.running = parts[8] === '1';
+      liveScopeMeta.ch1En = parts[9] === '1';
+      liveScopeMeta.ch2En = parts[10] === '1';
+
+      updateScopeMetadataUI();
+
+      const activeTab = document.querySelector('.nav-item.active');
+      if (activeTab && activeTab.dataset.tab === 'dmm') {
+        switchTab('scope');
+      }
+    }
+    return;
+  }
+
+  // Scope Waveform: $WAVE,<ch>,<hex>
+  if (line.startsWith('$WAVE,')) {
+    const parts = line.split(',');
+    if (parts.length >= 3) {
+      const ch = parts[1].trim();
+      const hex = parts[2].trim();
+      const numPoints = hex.length / 2;
+      const samples = new Uint8Array(numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        samples[i] = parseInt(hex.substr(i * 2, 2), 16);
+      }
+
+      if (ch === '1') {
+        liveScopeWave1 = samples;
+      } else if (ch === '2') {
+        liveScopeWave2 = samples;
+      }
+      lastScopeWaveTime = Date.now();
+
+      const activeTab = document.querySelector('.nav-item.active');
+      if (activeTab && activeTab.dataset.tab === 'dmm') {
+        switchTab('scope');
+      }
+    }
+    return;
+  }
+}
+
+// Wire up automatic Main-Process Serial IPC streaming
 if (window.api && window.api.onDmmLine) {
   window.api.onDmmLine((line) => {
-    processLiveDmmLine(line);
+    processLiveSerialLine(line);
   });
 }
 if (window.api && window.api.onDmmStatus) {
@@ -885,7 +1035,19 @@ document.getElementById('btnScopeRun').addEventListener('click', (e) => {
   scopeRunning = !scopeRunning;
   e.target.innerText = scopeRunning ? 'STOP' : 'RUN';
   e.target.style.color = scopeRunning ? '' : '#ef4444';
+  if (window.api && window.api.sendDmmCommand) {
+    window.api.sendDmmCommand(scopeRunning ? 'SCOPE:RUN\n' : 'SCOPE:STOP\n');
+  }
 });
+
+const btnScopeAuto = document.getElementById('btnScopeAuto');
+if (btnScopeAuto) {
+  btnScopeAuto.addEventListener('click', () => {
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand('SCOPE:AUTO\n');
+    }
+  });
+}
 
 document.querySelectorAll('[data-timebase]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -960,76 +1122,119 @@ function renderScope() {
   scopeCtx.lineTo(width / 2, height);
   scopeCtx.stroke();
 
-  if (scopeRunning) {
-    scopePhase += 0.05 * (genFreq / 1000) * timebaseVal;
+    const hasHardwareWave = (Date.now() - lastScopeWaveTime < 2500) && (liveScopeWave1 || liveScopeWave2);
+
+  // Live status badge on canvas
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  if (hasHardwareWave) {
+    scopeCtx.fillStyle = '#10b981';
+    scopeCtx.fillText(`● HARDWARE LIVE TELEMETRIE [${liveScopeMeta.tb} | CH1:${liveScopeMeta.v1} | CH2:${liveScopeMeta.v2}]`, 12, 22);
+  } else {
+    scopeCtx.fillStyle = '#64748b';
+    scopeCtx.fillText('○ SIMULATOR MODUS (Warte auf USB Telemetrie...)', 12, 22);
   }
 
   const showCh1 = document.getElementById('chkCh1').checked;
   const showCh2 = document.getElementById('chkCh2').checked;
   const showFft = document.getElementById('chkFft').checked;
 
-  // CH1 Wave (Cyan)
-  if (showCh1) {
-    scopeCtx.strokeStyle = '#00f2fe';
-    scopeCtx.lineWidth = 2.5;
-    scopeCtx.shadowColor = '#00f2fe';
-    scopeCtx.shadowBlur = 8;
-    scopeCtx.beginPath();
-
-    for (let x = 0; x < width; x++) {
-      const t = (x / width) * Math.PI * 4 * timebaseVal + scopePhase;
-      let val = Math.sin(t);
-      if (genWave === 'square') val = Math.sin(t) >= 0 ? 1 : -1;
-      else if (genWave === 'tri') val = (2 / Math.PI) * Math.asin(Math.sin(t));
-      else if (genWave === 'ecg') {
-        const mod = (t % (Math.PI * 2));
-        val = mod > 1.0 && mod < 1.4 ? Math.sin((mod - 1.0) * Math.PI * 5) * 1.8 : Math.sin(t * 0.5) * 0.2;
+  if (hasHardwareWave) {
+    // REAL HARDWARE CH1 WAVE
+    if (showCh1 && liveScopeWave1 && liveScopeWave1.length > 1) {
+      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.lineWidth = 2.5;
+      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowBlur = 8;
+      scopeCtx.beginPath();
+      const n = liveScopeWave1.length;
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * width;
+        const raw = liveScopeWave1[i];
+        const delta = raw - 128;
+        const y = centerY - (delta / 32) * divY;
+        if (i === 0) scopeCtx.moveTo(x, y);
+        else scopeCtx.lineTo(x, y);
       }
-
-      const y = centerY - (val * divY * 1.8) / ch1Scale;
-      if (x === 0) scopeCtx.moveTo(x, y);
-      else scopeCtx.lineTo(x, y);
+      scopeCtx.stroke();
+      scopeCtx.shadowBlur = 0;
     }
-    scopeCtx.stroke();
-    scopeCtx.shadowBlur = 0;
-  }
 
-  // CH2 Wave (Amber)
-  if (showCh2) {
-    scopeCtx.strokeStyle = '#fb923c';
-    scopeCtx.lineWidth = 2;
-    scopeCtx.shadowColor = '#fb923c';
-    scopeCtx.shadowBlur = 6;
-    scopeCtx.beginPath();
-
-    for (let x = 0; x < width; x++) {
-      const t = (x / width) * Math.PI * 6 * timebaseVal + (scopePhase * 1.3);
-      const val = Math.cos(t);
-      const y = centerY - (val * divY * 1.2) / ch2Scale;
-      if (x === 0) scopeCtx.moveTo(x, y);
-      else scopeCtx.lineTo(x, y);
+    // REAL HARDWARE CH2 WAVE
+    if (showCh2 && liveScopeWave2 && liveScopeWave2.length > 1) {
+      scopeCtx.strokeStyle = '#fb923c';
+      scopeCtx.lineWidth = 2;
+      scopeCtx.shadowColor = '#fb923c';
+      scopeCtx.shadowBlur = 6;
+      scopeCtx.beginPath();
+      const n = liveScopeWave2.length;
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * width;
+        const raw = liveScopeWave2[i];
+        const delta = raw - 128;
+        const y = centerY - (delta / 32) * divY;
+        if (i === 0) scopeCtx.moveTo(x, y);
+        else scopeCtx.lineTo(x, y);
+      }
+      scopeCtx.stroke();
+      scopeCtx.shadowBlur = 0;
     }
-    scopeCtx.stroke();
-    scopeCtx.shadowBlur = 0;
-  }
-
-  // FFT Bars (bottom)
-  if (showFft) {
-    scopeCtx.fillStyle = 'rgba(16, 185, 129, 0.4)';
-    const bars = 40;
-    const barW = width / bars;
-    for (let i = 0; i < bars; i++) {
-      const amp = Math.abs(Math.sin(scopePhase * 0.5 + i * 0.4)) * (height * 0.3) * (1 / (1 + i * 0.15));
-      scopeCtx.fillRect(i * barW + 2, height - amp, barW - 4, amp);
+  } else {
+    if (scopeRunning) {
+      scopePhase += 0.05 * (genFreq / 1000) * timebaseVal;
     }
-  }
 
-  // Update Stats
-  const vpp1 = (3.3 * (1 / ch1Scale)).toFixed(2);
-  const vrms1 = (vpp1 * 0.35355).toFixed(2);
-  document.getElementById('statCh1Vpp').innerText = `${vpp1} Vpp`;
-  document.getElementById('statCh1Vrms').innerText = `${vrms1} Vrms`;
-  document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
+    // CH1 Wave (Cyan)
+    if (showCh1) {
+      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.lineWidth = 2.5;
+      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowBlur = 8;
+      scopeCtx.beginPath();
+
+      for (let x = 0; x < width; x++) {
+        const t = (x / width) * Math.PI * 4 * timebaseVal + scopePhase;
+        let val = Math.sin(t);
+        if (genWave === 'square') val = Math.sin(t) >= 0 ? 1 : -1;
+        else if (genWave === 'tri') val = (2 / Math.PI) * Math.asin(Math.sin(t));
+        else if (genWave === 'ecg') {
+          const mod = (t % (Math.PI * 2));
+          val = mod > 1.0 && mod < 1.4 ? Math.sin((mod - 1.0) * Math.PI * 5) * 1.8 : Math.sin(t * 0.5) * 0.2;
+        }
+
+        const y = centerY - (val * divY * 1.8) / ch1Scale;
+        if (x === 0) scopeCtx.moveTo(x, y);
+        else scopeCtx.lineTo(x, y);
+      }
+      scopeCtx.stroke();
+      scopeCtx.shadowBlur = 0;
+    }
+
+    // CH2 Wave (Amber)
+    if (showCh2) {
+      scopeCtx.strokeStyle = '#fb923c';
+      scopeCtx.lineWidth = 2;
+      scopeCtx.shadowColor = '#fb923c';
+      scopeCtx.shadowBlur = 6;
+      scopeCtx.beginPath();
+
+      for (let x = 0; x < width; x++) {
+        const t = (x / width) * Math.PI * 6 * timebaseVal + (scopePhase * 1.3);
+        const val = Math.cos(t);
+        const y = centerY - (val * divY * 1.2) / ch2Scale;
+        if (x === 0) scopeCtx.moveTo(x, y);
+        else scopeCtx.lineTo(x, y);
+      }
+      scopeCtx.stroke();
+      scopeCtx.shadowBlur = 0;
+    }
+
+    // Update Simulated Stats
+    const vpp1 = (3.3 * (1 / ch1Scale)).toFixed(2);
+    const vrms1 = (vpp1 * 0.35355).toFixed(2);
+    document.getElementById('statCh1Vpp').innerText = `${vpp1} Vpp`;
+    document.getElementById('statCh1Vrms').innerText = `${vrms1} Vrms`;
+    document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
+  }
 
   requestAnimationFrame(renderScope);
 }
