@@ -26,6 +26,25 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
+  // Web Serial API permission handler for live USB-CDC COM port streaming
+  const ses = mainWindow.webContents.session;
+  ses.on('select-serial-port', (event, portList, webContents, callback) => {
+    event.preventDefault();
+    if (portList && portList.length > 0) {
+      callback(portList[0].portId);
+    } else {
+      callback('');
+    }
+  });
+  ses.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === 'serial') return true;
+    return false;
+  });
+  ses.setDevicePermissionHandler((details) => {
+    if (details.deviceType === 'serial') return true;
+    return false;
+  });
+
   // Start polling device status every 1500ms
   pollTimer = setInterval(async () => {
     try {

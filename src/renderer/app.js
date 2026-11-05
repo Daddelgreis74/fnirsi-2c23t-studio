@@ -459,15 +459,23 @@ function calculateDmmValue() {
   return { val, formatted, sign, barPercent, status };
 }
 
-// Update DMM UI & Logger
-function updateDmmReading() {
+const btnDmmSerialConnect = document.getElementById('btnDmmSerialConnect');
+const tagDmmLive = document.getElementById('tagDmmLive');
+const boxDmmLiveStatus = document.getElementById('boxDmmLiveStatus');
+const dmmSimHeader = document.getElementById('dmmSimHeader');
+const dmmSimHints = document.getElementById('dmmSimHints');
+
+let serialPort = null;
+let serialReader = null;
+let isLiveSerialConnected = false;
+
+// Apply Reading to OLED UI, Stats & Logger
+function applyDmmReadingToUi(reading) {
   const now = new Date();
   if (dmmClockEl) dmmClockEl.innerText = now.toTimeString().split(' ')[0];
 
-  const reading = calculateDmmValue();
-
   if (!dmmHold) {
-    if (dmmSignEl) dmmSignEl.innerText = reading.sign;
+    if (dmmSignEl) dmmSignEl.innerText = reading.sign || '';
     if (dmmValueEl) dmmValueEl.innerText = reading.formatted;
     if (dmmBargraphFill) dmmBargraphFill.style.width = `${Math.min(100, Math.max(0, reading.barPercent))}%`;
 
@@ -532,6 +540,13 @@ function updateDmmReading() {
 
     renderDmmCanvas();
   }
+}
+
+// Update DMM UI & Logger (Simulation Loop)
+function updateDmmReading() {
+  if (isLiveSerialConnected) return;
+  const reading = calculateDmmValue();
+  applyDmmReadingToUi(reading);
 }
 
 // Render Real-time Trend Canvas
@@ -647,6 +662,240 @@ restartDmmLogLoop();
 
 // Listener on simulation range slider
 rngDmmSim?.addEventListener('input', updateDmmReading);
+
+// ==========================================
+// 0.1 LIVE USB-CDC SERIAL TELEMETRY STREAM
+// ==========================================
+
+function updateSerialConnectionUI(connected) {
+  isLiveSerialConnected = connected;
+  if (connected) {
+    if (tagDmmLive) {
+      tagDmmLive.innerText = 'LIVE USB';
+      tagDmmLive.style.borderColor = '#10b981';
+      tagDmmLive.style.color = '#10b981';
+      tagDmmLive.style.background = 'rgba(16, 185, 129, 0.15)';
+    }
+    if (btnDmmSerialConnect) {
+      btnDmmSerialConnect.innerText = '● LIVE TRENNEN';
+      btnDmmSerialConnect.style.background = '#ef4444';
+      btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.4)';
+    }
+    if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'block';
+    if (dmmSimHeader) dmmSimHeader.style.opacity = '0.35';
+    if (rngDmmSim) rngDmmSim.disabled = true;
+    if (dmmSimHints) dmmSimHints.style.opacity = '0.35';
+  } else {
+    if (tagDmmLive) {
+      tagDmmLive.innerText = 'DEMO / SIM';
+      tagDmmLive.style.borderColor = '#64748b';
+      tagDmmLive.style.color = '#94a3b8';
+      tagDmmLive.style.background = '';
+    }
+    if (btnDmmSerialConnect) {
+      btnDmmSerialConnect.innerText = '● LIVE USB VERBINDEN';
+      btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
+    }
+    if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
+    if (dmmSimHeader) dmmSimHeader.style.opacity = '1';
+    if (rngDmmSim) rngDmmSim.disabled = false;
+    if (dmmSimHints) dmmSimHints.style.opacity = '1';
+  }
+}
+
+async function disconnectSerial() {
+  isLiveSerialConnected = false;
+  if (serialReader) {
+    try {
+      await serialReader.cancel();
+      serialReader.releaseLock();
+    } catch(e) {}
+    serialReader = null;
+  }
+  if (serialPort) {
+    try {
+      await serialPort.close();
+    } catch(e) {}
+    serialPort = null;
+  }
+  updateSerialConnectionUI(false);
+}
+
+async function toggleLiveSerial() {
+  if (isLiveSerialConnected) {
+    await disconnectSerial();
+    showToast('Live-Verbindung getrennt (Demo-Modus aktiv)');
+    return;
+  }
+
+  if (!navigator.serial) {
+    showToast('Web Serial API wird von dieser Electron-Version nicht unterstützt');
+    return;
+  }
+
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 });
+
+    updateSerialConnectionUI(true);
+    showToast('Live USB-Telemetrie erfolgreich verbunden!');
+
+    readSerialLoop();
+  } catch (err) {
+    console.warn('Serial connect error:', err);
+    if (err.name !== 'NotFoundError') {
+      showToast(`Verbindungsfehler: ${err.message || err}`);
+    }
+    await disconnectSerial();
+  }
+}
+
+async function readSerialLoop() {
+  if (!serialPort || !serialPort.readable) return;
+
+  const textDecoder = new TextDecoderStream();
+  const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+  const reader = textDecoder.readable.getReader();
+  serialReader = reader;
+
+  let buffer = '';
+
+  try {
+    while (isLiveSerialConnected) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        buffer += value;
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop(); // keep partial last line
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('$DMM,')) {
+            processLiveDmmLine(trimmed);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    if (isLiveSerialConnected) {
+      console.warn('Serial read loop error:', err);
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch (e) {}
+    await disconnectSerial();
+  }
+}
+
+function processLiveDmmLine(line) {
+  // Format: $DMM,status,val,unit,valid
+  // Example: $DMM,LIVE,12.345,V,OK
+  const parts = line.split(',');
+  if (parts.length < 5) return;
+
+  const rawStatus = parts[1];
+  let rawVal = parts[2].trim();
+  let rawUnit = parts[3].trim().toUpperCase();
+  const rawValid = parts[4].trim();
+
+  let detectedMode = 'DCV';
+  let cleanUnit = 'V';
+  let subtype = 'DC';
+
+  if (rawUnit === 'V') {
+    detectedMode = (dmmMode === 'ACV') ? 'ACV' : 'DCV';
+    cleanUnit = 'V';
+    subtype = detectedMode === 'ACV' ? 'AC' : 'DC';
+  } else if (rawUnit === 'MV') {
+    detectedMode = 'DCMV';
+    cleanUnit = 'mV';
+    subtype = 'DC';
+  } else if (rawUnit === 'A') {
+    detectedMode = (dmmMode === 'ACA') ? 'ACA' : 'DCA';
+    cleanUnit = 'A';
+    subtype = detectedMode === 'ACA' ? 'AC' : 'DC';
+  } else if (rawUnit === 'MA') {
+    detectedMode = 'MA';
+    cleanUnit = 'mA';
+    subtype = 'DC';
+  } else if (rawUnit.includes('OHM') || rawUnit.includes('Ω')) {
+    cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
+    detectedMode = (dmmMode === 'CONT') ? 'CONT' : 'RES';
+    subtype = 'Ω';
+  } else if (rawUnit.includes('F')) {
+    detectedMode = 'CAP';
+    cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF');
+    subtype = 'CAP';
+  } else if (rawUnit.includes('DEG') || rawUnit.includes('C')) {
+    detectedMode = 'TEMP';
+    cleanUnit = '°C';
+    subtype = 'TEMP';
+  } else if (rawUnit.includes('HZ')) {
+    detectedMode = 'FREQ';
+    cleanUnit = rawUnit.includes('KHZ') ? 'kHz' : 'Hz';
+    subtype = 'FREQ';
+  }
+
+  // Update mode selector button in UI if different
+  if (detectedMode !== dmmMode && !['ACV', 'ACA', 'CONT'].includes(dmmMode)) {
+    dmmMode = detectedMode;
+    document.querySelectorAll('.btn-dmm-mode').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === dmmMode);
+    });
+  }
+
+  dmmUnit = cleanUnit;
+  if (dmmUnitEl) dmmUnitEl.innerText = cleanUnit;
+  if (tagDmmSubtype) tagDmmSubtype.innerText = subtype;
+
+  // Format value & sign
+  let numVal = 0;
+  let formatted = rawVal;
+  let sign = '';
+  let status = rawValid === 'OK' ? 'OK' : 'HOLD';
+
+  if (rawVal.startsWith('-')) {
+    sign = '-';
+    rawVal = rawVal.substring(1);
+  }
+
+  if (rawVal === 'OPEN' || rawVal === 'O.L' || rawVal === '0.L') {
+    formatted = '0.L';
+    status = 'OVERLOAD';
+    numVal = 0;
+    stopBuzzer();
+  } else {
+    numVal = parseFloat(rawVal) || 0;
+    formatted = rawVal;
+
+    // Buzzer in continuity mode
+    if (dmmMode === 'CONT' || rawUnit.includes('OHM')) {
+      if (numVal < 50 && rawVal !== 'OPEN' && status !== 'OVERLOAD') {
+        playBuzzer(2400);
+        status = 'BUZZ';
+      } else {
+        stopBuzzer();
+      }
+    }
+  }
+
+  // Calculate bargraph fill (0 to 100%)
+  const maxRef = numVal > 100 ? 500 : (numVal > 10 ? 50 : 10);
+  const barPercent = Math.min(100, Math.max(0, (Math.abs(numVal) / maxRef) * 100));
+
+  applyDmmReadingToUi({
+    val: numVal,
+    formatted,
+    sign,
+    barPercent,
+    status
+  });
+}
+
+btnDmmSerialConnect?.addEventListener('click', toggleLiveSerial);
 
 // ==========================================
 // 1. OSZILLOSKOP SIMULATOR & LABOR
