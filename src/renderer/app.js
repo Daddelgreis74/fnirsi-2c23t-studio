@@ -1138,12 +1138,34 @@ function renderScope() {
   const showCh2 = document.getElementById('chkCh2').checked;
   const showFft = document.getElementById('chkFft').checked;
 
+  const dualChannel = showCh1 && showCh2;
+  const ch1CenterY = dualChannel ? centerY - divY * 1.5 : centerY;
+  const ch2CenterY = dualChannel ? centerY + divY * 1.5 : centerY;
+
+  // Ground Reference Markers (wie auf der echten Hardware)
+  if (showCh1) {
+    scopeCtx.fillStyle = '#facc15';
+    scopeCtx.beginPath();
+    scopeCtx.moveTo(0, ch1CenterY - 6);
+    scopeCtx.lineTo(9, ch1CenterY);
+    scopeCtx.lineTo(0, ch1CenterY + 6);
+    scopeCtx.fill();
+  }
+  if (showCh2) {
+    scopeCtx.fillStyle = '#00f2fe';
+    scopeCtx.beginPath();
+    scopeCtx.moveTo(0, ch2CenterY - 6);
+    scopeCtx.lineTo(9, ch2CenterY);
+    scopeCtx.lineTo(0, ch2CenterY + 6);
+    scopeCtx.fill();
+  }
+
   if (hasHardwareWave) {
-    // REAL HARDWARE CH1 WAVE
+    // REAL HARDWARE CH1 WAVE (Gelb, Hardware-Kanal 1 oben)
     if (showCh1 && liveScopeWave1 && liveScopeWave1.length > 1) {
-      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
-      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowColor = '#facc15';
       scopeCtx.shadowBlur = 8;
       scopeCtx.beginPath();
       const n = liveScopeWave1.length;
@@ -1151,7 +1173,7 @@ function renderScope() {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave1[i];
         const delta = raw - 128;
-        const y = centerY - (delta / 32) * divY;
+        const y = ch1CenterY - (delta / 32) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1159,19 +1181,19 @@ function renderScope() {
       scopeCtx.shadowBlur = 0;
     }
 
-    // REAL HARDWARE CH2 WAVE
+    // REAL HARDWARE CH2 WAVE (Cyan/Blau, Hardware-Kanal 2 unten)
     if (showCh2 && liveScopeWave2 && liveScopeWave2.length > 1) {
-      scopeCtx.strokeStyle = '#fb923c';
-      scopeCtx.lineWidth = 2;
-      scopeCtx.shadowColor = '#fb923c';
-      scopeCtx.shadowBlur = 6;
+      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.lineWidth = 2.2;
+      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowBlur = 8;
       scopeCtx.beginPath();
       const n = liveScopeWave2.length;
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave2[i];
         const delta = raw - 128;
-        const y = centerY - (delta / 32) * divY;
+        const y = ch2CenterY - (delta / 32) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1183,11 +1205,11 @@ function renderScope() {
       scopePhase += 0.05 * (genFreq / 1000) * timebaseVal;
     }
 
-    // CH1 Wave (Cyan)
+    // CH1 Wave (Gelb, oben)
     if (showCh1) {
-      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
-      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowColor = '#facc15';
       scopeCtx.shadowBlur = 8;
       scopeCtx.beginPath();
 
@@ -1201,7 +1223,7 @@ function renderScope() {
           val = mod > 1.0 && mod < 1.4 ? Math.sin((mod - 1.0) * Math.PI * 5) * 1.8 : Math.sin(t * 0.5) * 0.2;
         }
 
-        const y = centerY - (val * divY * 1.8) / ch1Scale;
+        const y = ch1CenterY - (val * divY * 1.5) / ch1Scale;
         if (x === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1209,18 +1231,18 @@ function renderScope() {
       scopeCtx.shadowBlur = 0;
     }
 
-    // CH2 Wave (Amber)
+    // CH2 Wave (Cyan/Blau, unten)
     if (showCh2) {
-      scopeCtx.strokeStyle = '#fb923c';
-      scopeCtx.lineWidth = 2;
-      scopeCtx.shadowColor = '#fb923c';
-      scopeCtx.shadowBlur = 6;
+      scopeCtx.strokeStyle = '#00f2fe';
+      scopeCtx.lineWidth = 2.2;
+      scopeCtx.shadowColor = '#00f2fe';
+      scopeCtx.shadowBlur = 8;
       scopeCtx.beginPath();
 
       for (let x = 0; x < width; x++) {
         const t = (x / width) * Math.PI * 6 * timebaseVal + (scopePhase * 1.3);
         const val = Math.cos(t);
-        const y = centerY - (val * divY * 1.2) / ch2Scale;
+        const y = ch2CenterY - (val * divY * 1.2) / ch2Scale;
         if (x === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
