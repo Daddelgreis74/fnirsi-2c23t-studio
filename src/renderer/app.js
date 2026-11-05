@@ -540,7 +540,7 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 // 0.1 LIVE USB-CDC SERIAL TELEMETRY STREAM
 // ==========================================
 
-function updateSerialConnectionUI(connected) {
+function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
   if (connected) {
     if (tagDmmLive) {
@@ -550,17 +550,18 @@ function updateSerialConnectionUI(connected) {
       tagDmmLive.style.background = 'rgba(16, 185, 129, 0.15)';
     }
     if (btnDmmSerialConnect) {
-      btnDmmSerialConnect.innerText = '● LIVE TRENNEN';
-      btnDmmSerialConnect.style.background = '#ef4444';
-      btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.4)';
+      btnDmmSerialConnect.innerText = '● LIVE NEU VERBINDEN';
+      btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
-    if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'block';
-    if (dmmSimHeader) dmmSimHeader.style.opacity = '0.35';
-    if (rngDmmSim) rngDmmSim.disabled = true;
-    if (dmmSimHints) dmmSimHints.style.opacity = '0.35';
+    if (boxDmmLiveStatus) {
+      boxDmmLiveStatus.style.display = 'block';
+      boxDmmLiveStatus.innerText = `● LIVE TELEMETRIE AKTIV (${port || 'COM4'})`;
+    }
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Live-Messwerte werden empfangen.';
   } else {
     if (tagDmmLive) {
-      tagDmmLive.innerText = 'DEMO / SIM';
+      tagDmmLive.innerText = 'WARTE AUF GERÄT';
       tagDmmLive.style.borderColor = '#64748b';
       tagDmmLive.style.color = '#94a3b8';
       tagDmmLive.style.background = '';
@@ -571,95 +572,7 @@ function updateSerialConnectionUI(connected) {
       btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
     if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
-    if (dmmSimHeader) dmmSimHeader.style.opacity = '1';
-    if (rngDmmSim) rngDmmSim.disabled = false;
-    if (dmmSimHints) dmmSimHints.style.opacity = '1';
-  }
-}
-
-async function disconnectSerial() {
-  isLiveSerialConnected = false;
-  if (serialReader) {
-    try {
-      await serialReader.cancel();
-      serialReader.releaseLock();
-    } catch(e) {}
-    serialReader = null;
-  }
-  if (serialPort) {
-    try {
-      await serialPort.close();
-    } catch(e) {}
-    serialPort = null;
-  }
-  updateSerialConnectionUI(false);
-}
-
-async function toggleLiveSerial() {
-  if (isLiveSerialConnected) {
-    await disconnectSerial();
-    showToast('Live-Verbindung getrennt (Demo-Modus aktiv)');
-    return;
-  }
-
-  if (!navigator.serial) {
-    showToast('Web Serial API wird von dieser Electron-Version nicht unterstützt');
-    return;
-  }
-
-  try {
-    serialPort = await navigator.serial.requestPort();
-    await serialPort.open({ baudRate: 115200 });
-
-    updateSerialConnectionUI(true);
-    showToast('Live USB-Telemetrie erfolgreich verbunden!');
-
-    readSerialLoop();
-  } catch (err) {
-    console.warn('Serial connect error:', err);
-    if (err.name !== 'NotFoundError') {
-      showToast(`Verbindungsfehler: ${err.message || err}`);
-    }
-    await disconnectSerial();
-  }
-}
-
-async function readSerialLoop() {
-  if (!serialPort || !serialPort.readable) return;
-
-  const textDecoder = new TextDecoderStream();
-  const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
-  const reader = textDecoder.readable.getReader();
-  serialReader = reader;
-
-  let buffer = '';
-
-  try {
-    while (isLiveSerialConnected) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      if (value) {
-        buffer += value;
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop(); // keep partial last line
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('$DMM,')) {
-            processLiveDmmLine(trimmed);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    if (isLiveSerialConnected) {
-      console.warn('Serial read loop error:', err);
-    }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch (e) {}
-    await disconnectSerial();
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Warte auf Verbindung... Gerät anstecken und auf DMM stellen.';
   }
 }
 
@@ -949,30 +862,11 @@ btnDmmSaveRawLog?.addEventListener('click', async () => {
 });
 
 btnDmmSerialConnect?.addEventListener('click', async () => {
-  showToast('Suche nach 2C23T COM-Port...');
+  showToast('Suche & verbinde 2C23T COM-Port...');
   if (window.api && window.api.reconnectSerial) {
     await window.api.reconnectSerial();
   }
-  toggleLiveSerial();
 });
-
-// Auto-Connect to already granted 2C23T Serial Port on startup
-async function autoConnectSerial() {
-  if (isLiveSerialConnected) return;
-  if (navigator.serial) {
-    try {
-      const ports = await navigator.serial.getPorts();
-      if (ports && ports.length > 0) {
-        serialPort = ports[0];
-        await serialPort.open({ baudRate: 115200 });
-        updateSerialConnectionUI(true);
-        readSerialLoop();
-      }
-    } catch(e) {}
-  }
-}
-autoConnectSerial();
-setInterval(autoConnectSerial, 2500);
 
 
 // ==========================================
