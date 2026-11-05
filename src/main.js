@@ -99,6 +99,10 @@ ipcMain.handle('device:get-status', async () => {
   return await deviceManager.scanDrives();
 });
 
+ipcMain.handle('dmm:send-command', async (_event, cmd) => {
+  return serialManager.sendCommand(cmd);
+});
+
 ipcMain.handle('dmm:reconnect-serial', async () => {
   serialManager.stop();
   serialManager.start(

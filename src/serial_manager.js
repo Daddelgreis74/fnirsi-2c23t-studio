@@ -69,6 +69,20 @@ class SerialManager {
         $p.Open()
         [Console]::WriteLine('CONNECTED')
         [Console]::Out.Flush()
+
+        $thread = [System.Threading.Thread]::new([System.Threading.ThreadStart]{
+          while ($p.IsOpen) {
+            try {
+              $cmd = [Console]::ReadLine()
+              if ($cmd -and $p.IsOpen) {
+                $p.WriteLine($cmd)
+              }
+            } catch {}
+          }
+        })
+        $thread.IsBackground = $true
+        $thread.Start()
+
         while ($p.IsOpen) {
           try {
             $line = $p.ReadLine()
@@ -131,6 +145,18 @@ class SerialManager {
       console.warn('Failed to spawn serial worker:', err);
       this.worker = null;
     }
+  }
+
+  sendCommand(cmd) {
+    if (this.worker && this.worker.stdin && this.worker.stdin.writable) {
+      try {
+        this.worker.stdin.write(cmd.trim() + '\n');
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    }
+    return { success: false, error: 'Not connected' };
   }
 
   stop() {

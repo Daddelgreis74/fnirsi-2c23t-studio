@@ -220,6 +220,12 @@ document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
 
     resetDmmStats();
     stopBuzzer();
+
+    // Synchronize mode change to physical 2C23T hardware
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand('MODE:' + dmmMode);
+    }
+
     updateDmmReading();
   });
 });
@@ -658,56 +664,122 @@ async function readSerialLoop() {
 }
 
 function processLiveDmmLine(line) {
-  // Format: $DMM,status,val,unit,valid
-  // Example: $DMM,LIVE,12.345,V,OK
+  // Telemetry Format: $DMM,mode,val,unit,status
+  // Example: $DMM,ACV,230.1,V,OK  or  $DMM,RES,4.72,KOHM,OK
   const parts = line.split(',');
   if (parts.length < 5) return;
 
-  const rawStatus = parts[1];
+  const modeTag = parts[1].trim().toUpperCase();
   let rawVal = parts[2].trim();
   let rawUnit = parts[3].trim().toUpperCase();
   const rawValid = parts[4].trim();
 
-  let detectedMode = 'DCV';
-  let cleanUnit = 'V';
-  let subtype = 'DC';
+  let detectedMode = dmmMode;
+  let cleanUnit = dmmUnit || 'V';
+  let subtype = dmmSubtype || 'DC';
 
-  if (rawUnit === 'V') {
-    detectedMode = (dmmMode === 'ACV') ? 'ACV' : 'DCV';
-    cleanUnit = 'V';
-    subtype = detectedMode === 'ACV' ? 'AC' : 'DC';
-  } else if (rawUnit === 'MV') {
-    detectedMode = 'DCMV';
-    cleanUnit = 'mV';
-    subtype = 'DC';
-  } else if (rawUnit === 'A') {
-    detectedMode = (dmmMode === 'ACA') ? 'ACA' : 'DCA';
-    cleanUnit = 'A';
-    subtype = detectedMode === 'ACA' ? 'AC' : 'DC';
-  } else if (rawUnit === 'MA') {
-    detectedMode = 'MA';
-    cleanUnit = 'mA';
-    subtype = 'DC';
-  } else if (rawUnit.includes('OHM') || rawUnit.includes('Ω')) {
-    cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
-    detectedMode = (dmmMode === 'CONT') ? 'CONT' : 'RES';
-    subtype = 'Ω';
-  } else if (rawUnit.includes('F')) {
-    detectedMode = 'CAP';
-    cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF');
-    subtype = 'CAP';
-  } else if (rawUnit.includes('DEG') || rawUnit.includes('C')) {
-    detectedMode = 'TEMP';
-    cleanUnit = '°C';
-    subtype = 'TEMP';
-  } else if (rawUnit.includes('HZ')) {
-    detectedMode = 'FREQ';
-    cleanUnit = rawUnit.includes('KHZ') ? 'kHz' : 'Hz';
-    subtype = 'FREQ';
+  // 1. Direct explicit mode matching from OpenScope firmware
+  switch (modeTag) {
+    case 'ACV':
+      detectedMode = 'ACV';
+      cleanUnit = 'V';
+      subtype = 'AC TRMS';
+      break;
+    case 'DCV':
+      detectedMode = 'DCV';
+      cleanUnit = 'V';
+      subtype = 'DC';
+      break;
+    case 'ACA':
+      detectedMode = 'ACA';
+      cleanUnit = 'A';
+      subtype = 'AC TRMS';
+      break;
+    case 'DCA':
+      detectedMode = 'DCA';
+      cleanUnit = 'A';
+      subtype = 'DC';
+      break;
+    case 'ACMA':
+      detectedMode = 'MA';
+      cleanUnit = 'mA';
+      subtype = 'AC TRMS';
+      break;
+    case 'DCMA':
+      detectedMode = 'MA';
+      cleanUnit = 'mA';
+      subtype = 'DC';
+      break;
+    case 'RES':
+      detectedMode = 'RES';
+      subtype = 'RES';
+      cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
+      break;
+    case 'CONT':
+      detectedMode = 'CONT';
+      subtype = 'CONT';
+      cleanUnit = 'Ω';
+      break;
+    case 'DIODE':
+      detectedMode = 'DIODE';
+      subtype = 'DIODE';
+      cleanUnit = 'V';
+      break;
+    case 'CAP':
+      detectedMode = 'CAP';
+      subtype = 'CAP';
+      cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF').replace('MF', 'mF');
+      break;
+    case 'TEMP':
+      detectedMode = 'TEMP';
+      subtype = 'TEMP';
+      cleanUnit = '°C';
+      break;
+    case 'LIVE':
+      detectedMode = 'DCV';
+      subtype = 'LIVE';
+      cleanUnit = 'V';
+      break;
+    default:
+      // Fallback for legacy telemetry formats
+      if (rawUnit === 'V') {
+        detectedMode = (dmmMode === 'ACV' || modeTag.includes('AC')) ? 'ACV' : 'DCV';
+        cleanUnit = 'V';
+        subtype = detectedMode === 'ACV' ? 'AC TRMS' : 'DC';
+      } else if (rawUnit === 'MV') {
+        detectedMode = 'DCMV';
+        cleanUnit = 'mV';
+        subtype = 'DC';
+      } else if (rawUnit === 'A') {
+        detectedMode = (dmmMode === 'ACA' || modeTag.includes('AC')) ? 'ACA' : 'DCA';
+        cleanUnit = 'A';
+        subtype = detectedMode === 'ACA' ? 'AC TRMS' : 'DC';
+      } else if (rawUnit === 'MA') {
+        detectedMode = 'MA';
+        cleanUnit = 'mA';
+        subtype = modeTag.includes('AC') ? 'AC TRMS' : 'DC';
+      } else if (rawUnit.includes('OHM') || rawUnit.includes('Ω')) {
+        cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
+        detectedMode = (dmmMode === 'CONT' || modeTag === 'CONT') ? 'CONT' : 'RES';
+        subtype = detectedMode === 'CONT' ? 'CONT' : 'RES';
+      } else if (rawUnit.includes('F')) {
+        detectedMode = 'CAP';
+        cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF');
+        subtype = 'CAP';
+      } else if (rawUnit.includes('DEG') || rawUnit.includes('C')) {
+        detectedMode = 'TEMP';
+        cleanUnit = '°C';
+        subtype = 'TEMP';
+      } else if (rawUnit.includes('HZ')) {
+        detectedMode = 'FREQ';
+        cleanUnit = rawUnit.includes('KHZ') ? 'kHz' : 'Hz';
+        subtype = 'FREQ';
+      }
+      break;
   }
 
-  // Update mode selector button in UI if different
-  if (detectedMode !== dmmMode && !['ACV', 'ACA', 'CONT'].includes(dmmMode)) {
+  // Synchronize UI active button when hardware mode changes
+  if (detectedMode !== dmmMode) {
     dmmMode = detectedMode;
     document.querySelectorAll('.btn-dmm-mode').forEach(b => {
       b.classList.toggle('active', b.dataset.mode === dmmMode);
@@ -715,6 +787,7 @@ function processLiveDmmLine(line) {
   }
 
   dmmUnit = cleanUnit;
+  dmmSubtype = subtype;
   if (dmmUnitEl) dmmUnitEl.innerText = cleanUnit;
   if (tagDmmSubtype) tagDmmSubtype.innerText = subtype;
 
@@ -738,14 +811,16 @@ function processLiveDmmLine(line) {
     numVal = parseFloat(rawVal) || 0;
     formatted = rawVal;
 
-    // Buzzer in continuity mode
-    if (dmmMode === 'CONT' || rawUnit.includes('OHM')) {
+    // Buzzer only in continuity mode
+    if (dmmMode === 'CONT') {
       if (numVal < 50 && rawVal !== 'OPEN' && status !== 'OVERLOAD') {
         playBuzzer(2400);
         status = 'BUZZ';
       } else {
         stopBuzzer();
       }
+    } else {
+      stopBuzzer();
     }
   }
 
