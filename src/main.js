@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const deviceManager = require('./device_manager');
+const serialManager = require('./serial_manager');
 
 let mainWindow = null;
 let pollTimer = null;
@@ -59,8 +60,23 @@ function createWindow() {
     }
   }, 1500);
 
+  // Automatic background Serial DMM telemetric streaming
+  serialManager.start(
+    (line) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-line', line);
+      }
+    },
+    (status) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-status', status);
+      }
+    }
+  );
+
   mainWindow.on('closed', () => {
     if (pollTimer) clearInterval(pollTimer);
+    serialManager.stop();
     mainWindow = null;
   });
 }
@@ -81,6 +97,23 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('device:get-status', async () => {
   return await deviceManager.scanDrives();
+});
+
+ipcMain.handle('dmm:reconnect-serial', async () => {
+  serialManager.stop();
+  serialManager.start(
+    (line) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-line', line);
+      }
+    },
+    (status) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('dmm:serial-status', status);
+      }
+    }
+  );
+  return { success: true };
 });
 
 ipcMain.handle('device:get-screenshots', async () => {

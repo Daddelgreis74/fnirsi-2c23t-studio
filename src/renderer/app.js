@@ -325,7 +325,7 @@ const lblDmmHwMsg = document.getElementById("lblDmmHwMsg");
 let serialPort = null;
 let serialReader = null;
 let isLiveSerialConnected = false;
- Reading to OLED UI, Stats & Logger
+// Apply Reading to OLED UI, Stats & Logger
 function applyDmmReadingToUi(reading) {
   const now = new Date();
   if (dmmClockEl) dmmClockEl.innerText = now.toTimeString().split(' ')[0];
@@ -762,7 +762,27 @@ function processLiveDmmLine(line) {
   });
 }
 
-btnDmmSerialConnect?.addEventListener('click', toggleLiveSerial);
+
+// Wire up automatic Main-Process Serial IPC streaming
+if (window.api && window.api.onDmmLine) {
+  window.api.onDmmLine((line) => {
+    processLiveDmmLine(line);
+  });
+}
+if (window.api && window.api.onDmmStatus) {
+  window.api.onDmmStatus((status) => {
+    updateSerialConnectionUI(status.connected, status.port);
+  });
+}
+
+btnDmmSerialConnect?.addEventListener('click', async () => {
+  showToast('Suche nach 2C23T COM-Port...');
+  if (window.api && window.api.reconnectSerial) {
+    await window.api.reconnectSerial();
+  }
+  toggleLiveSerial();
+});
+
 // Auto-Connect to already granted 2C23T Serial Port on startup
 async function autoConnectSerial() {
   if (isLiveSerialConnected) return;

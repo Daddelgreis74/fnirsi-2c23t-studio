@@ -8,5 +8,8 @@ contextBridge.exposeInMainWorld('api', {
   openInExplorer: (pathStr) => ipcRenderer.invoke('system:open-explorer', pathStr),
   openFile: (pathStr) => ipcRenderer.invoke('system:open-file', pathStr),
   saveCsv: (defaultName, content) => ipcRenderer.invoke('system:save-csv', { defaultName, content }),
-  selectDirectory: () => ipcRenderer.invoke('system:select-directory')
+  selectDirectory: () => ipcRenderer.invoke('system:select-directory'),
+  onDmmLine: (callback) => ipcRenderer.on('dmm:serial-line', (_event, line) => callback(line)),
+  onDmmStatus: (callback) => ipcRenderer.on('dmm:serial-status', (_event, status) => callback(status)),
+  reconnectSerial: () => ipcRenderer.invoke('dmm:reconnect-serial')
 });
