@@ -77,25 +77,13 @@ ipcMain.handle('device:backup', async () => {
   return await deviceManager.backupDevice(defaultDir);
 });
 
-ipcMain.handle('device:flash-firmware', async (event, firmwareKey) => {
+ipcMain.handle('system:open-firmware-folder', async () => {
   const fwDir = path.join(__dirname, '../assets/firmwares');
-  let binFile = '';
-
-  if (firmwareKey === 'stock') {
-    binFile = path.join(fwDir, 'F2C23T-GW-EN_V2.1.0.bin');
-  } else if (firmwareKey === 'drblast') {
-    binFile = path.join(fwDir, 'F2C23T-GW-EN_V2.1.0_DrBlast_260502.bin');
-  } else if (firmwareKey === 'openscope') {
-    binFile = path.join(fwDir, 'F2C23T-v2026.10.1-HW4.0-08007000.bin');
-  } else {
-    throw new Error(`Unbekannter Firmware-Typ: ${firmwareKey}`);
+  if (fs.existsSync(fwDir)) {
+    await shell.openPath(fwDir);
+    return true;
   }
-
-  return await deviceManager.flashFirmware(binFile, (percent, written, total) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('device:flash-progress', { percent, written, total });
-    }
-  });
+  return false;
 });
 
 ipcMain.handle('system:open-explorer', async (_event, targetPath) => {

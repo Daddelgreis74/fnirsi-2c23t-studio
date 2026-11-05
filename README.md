@@ -4,7 +4,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-00f2fe.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-10b981.svg)](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.1-10b981.svg)](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases)
 
 ---
 
@@ -15,20 +15,20 @@
   * Time/Div scaling (500µs – 10ms) and Volts/Div controls.
   * Real-Time FFT Spectrum Analyzer view.
   * Live calculated signal parameters ($V_{pp}$, $V_{rms}$, frequency).
-* **📸 Live Screenshot & Waveform Archive:**
+* **📸 Live Screenshot & Waveform Archiv:**
   * Auto-detects and synchronizes all `.bmp` screenshots captured with the 2C23T's `SAVE` button.
   * Built-in viewer with zoom, details, and 1-click PNG/PDF export.
 * **⚡ Arbitrary Waveform Studio (OpenScope ARBT Designer):**
   * Visual interactive wave editor: draw custom curves with your mouse or select mathematical presets (Sine, Half-Sine, Square, Sawtooth, Triangle, ECG Cardiac Pulse, Exponential, Noise).
   * 1-Click Export directly onto the 2C23T's root drive as `.CSV` for immediate DDS playback in OpenScope.
-* **🛠️ 1-Click Firmware & Safe Flasher:**
-  * Bundled with verified binaries:
-    1. **FNIRSI Stock V2.1.0** (Factory recovery for HW V0.4 Gowin FPGA, base `0x08007000`)
-    2. **Dr. Blast Patched V2.1.0** (Bugfixes for single-trigger buffer zeroing & accurate RMS math)
-    3. **OpenScope v2026.10.1** (Full open-source OS for HW 4.0)
-  * Throttled 4096-byte chunk transfer preventing IAP buffer overruns.
+* **🛠️ Firmware-Archiv & Sicherer Recovery Guide:**
+  * Geprüfte Binärdateien direkt im Zugriff:
+    1. **FNIRSI Stock V2.1.0** (Offizielle Werks-Firmware für HW V0.4 Gowin FPGA, Base `0x08007000`)
+    2. **OpenScope v2026.10.1** (Modulares Open-Source OS für HW 4.0)
+  * Schneller 1-Klick-Zugriff auf den lokalen Firmware-Ordner zur sicheren Übertragung per Explorer Drag-and-Drop (schützt vor Übertragungsabbrüchen virtueller IAP-Laufwerke).
+  * Integrierte Unbrick- und Hardware-Reset-Anleitung für den Bootloader.
 * **💾 Bootloader & Full Device Backup Manager:**
-  * Automatically backs up bootloaders (`boot_hw4.bin`, CRC32 `2ACD97AB`), calibration data, and screenshots into timestamped archives.
+  * Sichert Bootloader (`boot_hw4.bin`, CRC32 `2ACD97AB`), Kalibrierungsdaten und Screenshots in zeitgestempelten Archiven.
 
 ---
 
@@ -36,8 +36,8 @@
 
 Download the latest version from [GitHub Releases](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases):
 
-* **Installer (NSIS):** `FNIRSI 2C23T Studio Setup 1.0.0.exe` (Desktop Icon & Start Menu Integration)
-* **Portable:** `FNIRSI-2C23T-Studio-Portable-1.0.0.exe` (Single self-contained `.exe`)
+* **Installer (NSIS):** `FNIRSI 2C23T Studio Setup 1.0.1.exe` (Desktop Icon & Start Menu Integration)
+* **Portable:** `FNIRSI-2C23T-Studio-Portable-1.0.1.exe` (Single self-contained `.exe`)
 
 ---
 

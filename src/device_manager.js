@@ -213,48 +213,6 @@ class DeviceManager {
       files: copied
     };
   }
-
-  // Safe firmware flasher (copies .bin in 4096-byte throttled chunks to prevent IAP write overruns)
-  async flashFirmware(binPath, onProgress) {
-    if (!this.currentStatus.connected || !this.currentStatus.driveLetter) {
-      throw new Error('Kein Laufwerk erkannt! Bitte schalte das Gerät aus und halte MENU + Power gedrückt.');
-    }
-
-    if (!fs.existsSync(binPath)) {
-      throw new Error(`Firmware-Datei nicht gefunden: ${binPath}`);
-    }
-
-    const root = this.currentStatus.driveLetter;
-    const fileName = path.basename(binPath);
-    const destPath = path.join(root, fileName);
-
-    const data = fs.readFileSync(binPath);
-    const totalBytes = data.length;
-    const chunkSize = 4096;
-    let written = 0;
-
-    const fd = fs.openSync(destPath, 'w');
-
-    try {
-      while (written < totalBytes) {
-        const toWrite = Math.min(chunkSize, totalBytes - written);
-        fs.writeSync(fd, data, written, toWrite, written);
-        written += toWrite;
-
-        if (onProgress) {
-          const percent = Math.round((written / totalBytes) * 100);
-          onProgress(percent, written, totalBytes);
-        }
-
-        // Throttle 15ms per 4KB chunk to let IAP flash controller process
-        await new Promise(r => setTimeout(r, 15));
-      }
-    } finally {
-      fs.closeSync(fd);
-    }
-
-    return { success: true, fileName, bytesWritten: written };
-  }
 }
 
 module.exports = new DeviceManager();

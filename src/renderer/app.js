@@ -480,51 +480,15 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
 });
 
 // ==========================================
-// 4. FIRMWARE & FLASH MANAGER
+// 4. FIRMWARE ARCHIV & ANLEITUNGEN
 // ==========================================
-const flashModal = document.getElementById('flashModal');
-const flashProgressFill = document.getElementById('flashProgressFill');
-const flashProgressPercent = document.getElementById('flashProgressPercent');
-const flashProgressBytes = document.getElementById('flashProgressBytes');
-
-window.api.onFlashProgress(({ percent, written, total }) => {
-  flashProgressFill.style.width = `${percent}%`;
-  flashProgressPercent.innerText = `${percent}%`;
-  flashProgressBytes.innerText = `${Math.round(written/1024)} / ${Math.round(total/1024)} KB`;
+document.getElementById('btnOpenFwDir')?.addEventListener('click', () => {
+  window.api.openFirmwareFolder();
 });
 
-document.querySelectorAll('.btn-flash').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const fwKey = btn.dataset.fw;
-
-    if (!currentDeviceStatus || !currentDeviceStatus.connected || currentDeviceStatus.mode !== 'BOOTLOADER') {
-      alert(
-        "WICHTIG:\n\n" +
-        "Der FNIRSI 2C23T muss sich im BootLoader-Modus befinden!\n\n" +
-        "1. Schalte das Gerät aus.\n" +
-        "2. Halte die Taste MENU gedrückt und drücke kurz Power.\n" +
-        "3. Im Display erscheint 'BootLoader'.\n" +
-        "4. Klicke dann erneut auf Flashen."
-      );
-      return;
-    }
-
-    if (!confirm(`Möchtest du die Firmware (${fwKey.toUpperCase()}) jetzt auf das Gerät flashen?`)) {
-      return;
-    }
-
-    flashModal.style.display = 'flex';
-    flashProgressFill.style.width = '0%';
-    flashProgressPercent.innerText = '0%';
-
-    try {
-      const res = await window.api.flashFirmware(fwKey);
-      flashModal.style.display = 'none';
-      alert(`Erfolg!\n\nFirmware ${res.fileName} wurde vollständig übertragen.\nDas Gerät startet jetzt automatisch neu!`);
-    } catch (err) {
-      flashModal.style.display = 'none';
-      alert(`Fehler beim Flashen: ${err.message}`);
-    }
+document.querySelectorAll('.btn-open-fw').forEach(btn => {
+  btn.addEventListener('click', () => {
+    window.api.openFirmwareFolder();
   });
 });
 

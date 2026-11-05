@@ -1,7 +1,7 @@
 {
   "name": "fnirsi-2c23t-studio",
   "productName": "FNIRSI 2C23T Studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Professional Windows Desktop Studio, Companion & Control Suite for the FNIRSI 2C23T Handheld Oscilloscope, Multimeter & DDS Function Generator",
   "main": "src/main.js",
   "author": "Daddelgreis74",
