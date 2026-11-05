@@ -1124,14 +1124,14 @@ function renderScope() {
 
     const hasHardwareWave = (Date.now() - lastScopeWaveTime < 2500) && (liveScopeWave1 || liveScopeWave2);
 
-  // Live status badge on canvas
+  // Live status badge on canvas (unten links, damit keine Kollision mit den Messwert-Badges oben entsteht)
   scopeCtx.font = '11px Cascadia Code, monospace';
   if (hasHardwareWave) {
     scopeCtx.fillStyle = '#10b981';
-    scopeCtx.fillText(`● HARDWARE LIVE TELEMETRIE [${liveScopeMeta.tb} | CH1:${liveScopeMeta.v1} | CH2:${liveScopeMeta.v2}]`, 12, 22);
+    scopeCtx.fillText(`● HARDWARE LIVE TELEMETRIE [${liveScopeMeta.tb} | CH1:${liveScopeMeta.v1} | CH2:${liveScopeMeta.v2}]`, 14, height - 12);
   } else {
     scopeCtx.fillStyle = '#64748b';
-    scopeCtx.fillText('○ SIMULATOR MODUS (Warte auf USB Telemetrie...)', 12, 22);
+    scopeCtx.fillText('○ SIMULATOR MODUS (Warte auf USB Telemetrie...)', 14, height - 12);
   }
 
   const showCh1 = document.getElementById('chkCh1').checked;
