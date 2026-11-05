@@ -315,161 +315,17 @@ btnDmmExportCsv?.addEventListener('click', async () => {
   }
 });
 
-// Value computation based on simulation slider & current mode
-function calculateDmmValue() {
-  const simRaw = parseFloat(rngDmmSim ? rngDmmSim.value : 250);
-  const now = Date.now();
-  const noise = (Math.random() - 0.5) * 0.006;
-
-  let val = 0;
-  let status = 'OK';
-  let formatted = '0.000';
-  let barPercent = 0;
-  let sign = '';
-
-  switch (dmmMode) {
-    case 'DCV': {
-      // 0 to 50.000 V
-      val = (simRaw / 1000) * 48.0 + noise;
-      val = Math.max(0, val);
-      formatted = val.toFixed(3);
-      barPercent = (val / 50) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} V`;
-      break;
-    }
-    case 'ACV': {
-      // 0 to 250.00 V True RMS with slight mains frequency wobble
-      val = (simRaw / 1000) * 230.0 + (Math.sin(now / 400) * 0.15) + noise * 5;
-      val = Math.max(0, val);
-      formatted = val.toFixed(2);
-      barPercent = (val / 250) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} V AC`;
-      break;
-    }
-    case 'DCMV': {
-      // 0 to 999.9 mV
-      val = (simRaw / 1000) * 999.0 + noise * 10;
-      formatted = val.toFixed(1);
-      barPercent = (val / 1000) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} mV`;
-      break;
-    }
-    case 'DCA': {
-      // 0 to 10.000 A
-      val = (simRaw / 1000) * 9.99 + noise;
-      val = Math.max(0, val);
-      formatted = val.toFixed(3);
-      barPercent = (val / 10) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} A`;
-      break;
-    }
-    case 'ACA': {
-      val = (simRaw / 1000) * 9.99 + noise * 2;
-      val = Math.max(0, val);
-      formatted = val.toFixed(3);
-      barPercent = (val / 10) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} A AC`;
-      break;
-    }
-    case 'MA': {
-      // 0 to 500.0 mA
-      val = (simRaw / 1000) * 499.0 + noise * 5;
-      formatted = val.toFixed(2);
-      barPercent = (val / 500) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} mA`;
-      break;
-    }
-    case 'RES': {
-      // 0 to 10.000 kOhm
-      val = (simRaw / 1000) * 10000.0;
-      if (val >= 9950) {
-        formatted = '0.L';
-        status = 'OVERLOAD';
-        barPercent = 100;
-        if (lblSimValue) lblSimValue.innerText = 'Offen (O.L)';
-      } else {
-        formatted = (val / 1000).toFixed(3);
-        dmmUnit = 'kΩ';
-        if (dmmUnitEl) dmmUnitEl.innerText = 'kΩ';
-        barPercent = (val / 10000) * 100;
-        if (lblSimValue) lblSimValue.innerText = `${formatted} kΩ`;
-      }
-      break;
-    }
-    case 'CAP': {
-      // 0 to 100.0 uF
-      val = (simRaw / 1000) * 100.0 + noise;
-      val = Math.max(0, val);
-      formatted = val.toFixed(2);
-      barPercent = (val / 100) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} µF`;
-      break;
-    }
-    case 'CONT': {
-      // Continuity: buzzer if < 50 Ohm
-      val = (simRaw / 1000) * 200.0;
-      if (val < 50) {
-        formatted = val.toFixed(1);
-        status = 'BUZZ';
-        playBuzzer(2400);
-        if (lblSimValue) lblSimValue.innerText = `${formatted} Ω (Durchgang!)`;
-      } else {
-        stopBuzzer();
-        formatted = val >= 195 ? '0.L' : val.toFixed(1);
-        if (lblSimValue) lblSimValue.innerText = formatted === '0.L' ? 'Offen' : `${formatted} Ω`;
-      }
-      barPercent = Math.min(100, (val / 200) * 100);
-      break;
-    }
-    case 'DIODE': {
-      stopBuzzer();
-      val = (simRaw / 1000) * 2.5;
-      if (val >= 2.4) {
-        formatted = '0.L';
-        status = 'OPEN';
-        barPercent = 100;
-        if (lblSimValue) lblSimValue.innerText = 'Sperrrichtung (O.L)';
-      } else {
-        formatted = val.toFixed(3);
-        barPercent = (val / 2.5) * 100;
-        if (lblSimValue) lblSimValue.innerText = `${formatted} V (Flussspannung)`;
-      }
-      break;
-    }
-    case 'FREQ': {
-      stopBuzzer();
-      val = (simRaw / 1000) * 50000.0 + noise * 10;
-      formatted = val >= 1000 ? (val / 1000).toFixed(3) : val.toFixed(1);
-      dmmUnit = val >= 1000 ? 'kHz' : 'Hz';
-      if (dmmUnitEl) dmmUnitEl.innerText = dmmUnit;
-      barPercent = (val / 50000) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} ${dmmUnit}`;
-      break;
-    }
-    case 'TEMP': {
-      stopBuzzer();
-      val = -20 + (simRaw / 1000) * 320.0 + noise * 5;
-      formatted = val.toFixed(1);
-      barPercent = ((val + 20) / 320) * 100;
-      if (lblSimValue) lblSimValue.innerText = `${formatted} °C`;
-      break;
-    }
-  }
-
-  return { val, formatted, sign, barPercent, status };
-}
-
-const btnDmmSerialConnect = document.getElementById('btnDmmSerialConnect');
-const tagDmmLive = document.getElementById('tagDmmLive');
-const boxDmmLiveStatus = document.getElementById('boxDmmLiveStatus');
-const dmmSimHeader = document.getElementById('dmmSimHeader');
-const dmmSimHints = document.getElementById('dmmSimHints');
+// Hardware Status and Elements
+const btnDmmSerialConnect = document.getElementById("btnDmmSerialConnect");
+const tagDmmLive = document.getElementById("tagDmmLive");
+const boxDmmLiveStatus = document.getElementById("boxDmmLiveStatus");
+const lblDmmHwPort = document.getElementById("lblDmmHwPort");
+const lblDmmHwMsg = document.getElementById("lblDmmHwMsg");
 
 let serialPort = null;
 let serialReader = null;
 let isLiveSerialConnected = false;
-
-// Apply Reading to OLED UI, Stats & Logger
+ Reading to OLED UI, Stats & Logger
 function applyDmmReadingToUi(reading) {
   const now = new Date();
   if (dmmClockEl) dmmClockEl.innerText = now.toTimeString().split(' ')[0];
@@ -577,7 +433,18 @@ function renderDmmCanvas() {
     dmmCtx.stroke();
   }
 
-  if (dmmHistory.length < 2) return;
+  if (dmmHistory.length < 2) {
+    dmmCtx.fillStyle = "#64748b";
+    dmmCtx.font = "13px \"Cascadia Code\", Consolas, monospace";
+    dmmCtx.textAlign = "center";
+    if (isLiveSerialConnected) {
+      dmmCtx.fillText("Warte auf Messdaten vom 2C23T Multimeter...", w / 2, h / 2);
+    } else {
+      dmmCtx.fillText("Keine Live-Verbindung • Bitte oben auf \"LIVE USB VERBINDEN\" klicken", w / 2, h / 2);
+    }
+    dmmCtx.textAlign = "left";
+    return;
+  }
 
   // Filter history to current time window
   const now = Date.now();
@@ -896,6 +763,24 @@ function processLiveDmmLine(line) {
 }
 
 btnDmmSerialConnect?.addEventListener('click', toggleLiveSerial);
+// Auto-Connect to already granted 2C23T Serial Port on startup
+async function autoConnectSerial() {
+  if (isLiveSerialConnected) return;
+  if (navigator.serial) {
+    try {
+      const ports = await navigator.serial.getPorts();
+      if (ports && ports.length > 0) {
+        serialPort = ports[0];
+        await serialPort.open({ baudRate: 115200 });
+        updateSerialConnectionUI(true);
+        readSerialLoop();
+      }
+    } catch(e) {}
+  }
+}
+autoConnectSerial();
+setInterval(autoConnectSerial, 2500);
+
 
 // ==========================================
 // 1. OSZILLOSKOP SIMULATOR & LABOR
