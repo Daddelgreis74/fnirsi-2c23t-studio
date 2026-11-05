@@ -168,8 +168,17 @@ class DeviceManager {
     const cleanName = filename.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase().slice(0, 8);
     const targetPath = path.join(this.currentStatus.driveLetter, `${cleanName}.CSV`);
 
-    // CSV format: normalized values or mV points
-    let csvContent = pointsArray.map(p => Math.round(p)).join('\r\n');
+    // OpenScope DDS erwartet 8-Bit DAC Werte (0 bis 255).
+    // Falls pointsArray in mV (0..2500) vorliegt, normieren wir sauber auf 0..255:
+    let csvContent = pointsArray.map(p => {
+      let v = typeof p === 'number' ? p : parseFloat(p);
+      if (maxMv > 255) {
+        v = Math.round((v / maxMv) * 255);
+      } else {
+        v = Math.round(v);
+      }
+      return Math.max(0, Math.min(255, v));
+    }).join('\r\n');
     fs.writeFileSync(targetPath, csvContent, 'utf8');
 
     return {
