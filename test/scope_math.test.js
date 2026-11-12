@@ -69,6 +69,21 @@ test('measureWave on a flat line gives no frequency', () => {
   assert.strictEqual(m.vpp, 0);
 });
 
+test('measureWave ignores noise: a flat line with +/-1 count jitter has no frequency, duty or rise time', () => {
+  const s = Uint8Array.from({ length: 180 }, (_, i) => 128 + (i % 2 ? 1 : -1));
+  const m = M.measureWave(s, 200, 1e6);
+  assert.strictEqual(m.freqHz, null);
+  assert.strictEqual(m.dutyPct, null);
+  assert.strictEqual(m.riseNs, null);
+});
+
+test('measureWave is not fooled by noise riding on a square wave', () => {
+  const s = wave((t) => (((t * 1000) % 1 < 0.5 ? 176 : 80) + ((Math.round(t * 1e7) % 3) - 1)), 1e6);
+  const m = M.measureWave(s, 500, 1e6);
+  near(m.freqHz, 1000, 20, 'freq');
+  near(m.dutyPct, 50, 5, 'duty');
+});
+
 test('measureWave rejects unusable input', () => {
   assert.strictEqual(M.measureWave(null, 1000, 1e6), null);
   assert.strictEqual(M.measureWave(new Uint8Array(1), 1000, 1e6), null);

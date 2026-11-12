@@ -146,6 +146,10 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid var(--border-subtle);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-subtle {
@@ -1183,14 +1187,36 @@ input[type="range"] {
   cursor: pointer;
 }
 
-.scope-readout {
+.scope-table {
+  width: 100%;
   margin-top: 8px;
-  font-family: 'Cascadia Code', monospace;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--text-dim);
-  white-space: pre-wrap;
+  border-collapse: collapse;
+  font-size: 12px;
 }
 
-.scope-readout .ch1 { color: #facc15; }
-.scope-readout .ch2 { color: #00f2fe; }
+.scope-table th,
+.scope-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.scope-table thead th {
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: right;
+}
+
+.scope-table tbody th {
+  color: var(--text-dim);
+  font-weight: 500;
+  text-align: left;
+}
+
+.scope-table td {
+  font-family: 'Cascadia Code', monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.scope-table thead th.ch1 { color: #facc15; }
+.scope-table thead th.ch2 { color: #00f2fe; }

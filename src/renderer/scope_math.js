@@ -28,15 +28,28 @@
     return ((raw - RAW_ZERO) * vdivMv * Y_DIVS) / RAW_FULL;
   }
 
-  // Position (in samples, interpolated) where the signal crosses `level` going up or down.
-  function crossings(v, level, rising) {
+  // Below this peak-to-peak span (in raw counts, 32 counts = 1 division) the signal is treated as noise.
+  const MIN_SPAN_COUNTS = 8;
+
+  // Interpolated sample positions where the signal crosses `level` upwards, through a hysteresis of +/- h.
+  function risingCrossings(v, level, h) {
     const out = [];
+    let high = v[0] >= level;
     for (let i = 1; i < v.length; i++) {
-      const a = v[i - 1];
-      const b = v[i];
-      if (rising ? (a < level && b >= level) : (a >= level && b < level)) out.push(i - 1 + (level - a) / (b - a));
+      if (!high && v[i] >= level + h) {
+        let k = i - 1;
+        while (k > 0 && v[k] >= level) k--;
+        out.push(k + (level - v[k]) / (v[k + 1] - v[k]));
+        high = true;
+      } else if (high && v[i] <= level - h) {
+        high = false;
+      }
     }
     return out;
+  }
+
+  function fallingCrossings(v, level, h) {
+    return risingCrossings(v.map((x) => -x), -level, h);
   }
 
   function measureWave(samples, vdivMv, tbNs) {
@@ -49,12 +62,13 @@
     const vmean = v.reduce((a, b) => a + b, 0) / n;
     const vrms = Math.sqrt(v.reduce((a, b) => a + b * b, 0) / n);
     const result = { vmax, vmin, vpp, vmean, vrms, freqHz: null, dutyPct: null, riseNs: null };
-    if (vpp <= 0) return result;
+    if (vpp < rawToMv(RAW_ZERO + MIN_SPAN_COUNTS, vdivMv)) return result;
 
     const samplePeriodNs = (tbNs * X_DIVS) / (n - 1);
     const mid = (vmax + vmin) / 2;
-    const up = crossings(v, mid, true);
-    const down = crossings(v, mid, false);
+    const h = vpp * 0.1;
+    const up = risingCrossings(v, mid, h);
+    const down = fallingCrossings(v, mid, h);
 
     if (up.length >= 2) {
       const period = (up[up.length - 1] - up[0]) / (up.length - 1);
@@ -63,10 +77,10 @@
       if (fall !== undefined) result.dutyPct = ((fall - up[0]) / (up[1] - up[0])) * 100;
     }
 
-    const lo = crossings(v, vmin + 0.1 * vpp, true);
-    const hi = crossings(v, vmin + 0.9 * vpp, true);
+    const lo = risingCrossings(v, vmin + 0.1 * vpp, 0);
+    const hi = risingCrossings(v, vmin + 0.9 * vpp, 0);
     if (lo.length) {
-      const end = hi.find((h) => h > lo[0]);
+      const end = hi.find((x) => x > lo[0]);
       if (end !== undefined) result.riseNs = (end - lo[0]) * samplePeriodNs;
     }
     return result;

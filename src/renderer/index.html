@@ -347,9 +347,9 @@
             <!-- SIDEBAR CONTROLS FOR SCOPE -->
             <div class="scope-controls-panel">
               <div class="control-box">
-                <h3 data-i18n="scope.measure_title">Messungen & Cursor</h3>
+                <h3 data-i18n="scope.cursors_title">Cursor</h3>
                 <div class="controls-toolbar">
-                  <label><input type="checkbox" id="chkCursors"> <span data-i18n="scope.cursors">Cursor</span></label>
+                  <label><input type="checkbox" id="chkCursors"> <span data-i18n="scope.cursors_on">Aktiv</span></label>
                   <label><span data-i18n="scope.cursor_channel">Kanal:</span>
                     <select id="selCursorCh">
                       <option value="1">CH1</option>
@@ -357,8 +357,31 @@
                     </select>
                   </label>
                 </div>
-                <div class="scope-readout" id="scopeCursorReadout"></div>
-                <div class="scope-readout" id="scopeMeasures"></div>
+                <table class="scope-table">
+                  <thead><tr><th></th><th>1</th><th>2</th><th>Δ</th></tr></thead>
+                  <tbody>
+                    <tr><th data-i18n="scope.cursor_time">Zeit</th><td id="curX1">--</td><td id="curX2">--</td><td id="curDx">--</td></tr>
+                    <tr><th data-i18n="scope.cursor_volt">Spannung</th><td id="curY1">--</td><td id="curY2">--</td><td id="curDy">--</td></tr>
+                    <tr><th>1/ΔT</th><td colspan="3" id="curFreq">--</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="control-box">
+                <h3 data-i18n="scope.measure_title">Messungen</h3>
+                <table class="scope-table">
+                  <thead><tr><th></th><th class="ch1">CH1</th><th class="ch2">CH2</th></tr></thead>
+                  <tbody>
+                    <tr><th data-i18n="scope.m_vpp">Vss</th><td id="m1_vpp">--</td><td id="m2_vpp">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmax">Vmax</th><td id="m1_vmax">--</td><td id="m2_vmax">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmin">Vmin</th><td id="m1_vmin">--</td><td id="m2_vmin">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmean">Vmittel</th><td id="m1_vmean">--</td><td id="m2_vmean">--</td></tr>
+                    <tr><th data-i18n="scope.m_vrms">Veff</th><td id="m1_vrms">--</td><td id="m2_vrms">--</td></tr>
+                    <tr><th data-i18n="scope.m_freq">Frequenz</th><td id="m1_freq">--</td><td id="m2_freq">--</td></tr>
+                    <tr><th data-i18n="scope.m_duty">Tastgrad</th><td id="m1_duty">--</td><td id="m2_duty">--</td></tr>
+                    <tr><th data-i18n="scope.m_rise">Anstiegszeit</th><td id="m1_rise">--</td><td id="m2_rise">--</td></tr>
+                  </tbody>
+                </table>
               </div>
 
               <div class="control-box">

@@ -1094,8 +1094,6 @@ document.getElementById('rngGenFreq').addEventListener('input', (e) => {
 // Cursors (positions in divisions: x from the left edge, y from the channel centre) and measurements
 const chkCursors = document.getElementById('chkCursors');
 const selCursorCh = document.getElementById('selCursorCh');
-const scopeCursorReadout = document.getElementById('scopeCursorReadout');
-const scopeMeasures = document.getElementById('scopeMeasures');
 const scopeCursors = { x1: 2, x2: 7, y1: 2, y2: -2 };
 const scopeGeometry = { divX: 80, divY: 60, centerY: 240 };
 let draggedCursor = null;
@@ -1169,40 +1167,37 @@ function drawCursors(centerY, divX, divY, width, height) {
   scopeCtx.restore();
 }
 
+function setCells(prefix, values) {
+  for (const [key, text] of Object.entries(values)) setText(document.getElementById(prefix + key), text);
+}
+
 function updateScopeReadouts(live) {
-  const ch = selCursorCh.value;
-  const meta = { 1: liveScopeMeta.v1, 2: liveScopeMeta.v2 };
+  const vdiv = { 1: ScopeMath.parseVdivMv(liveScopeMeta.v1), 2: ScopeMath.parseVdivMv(liveScopeMeta.v2) };
   const tbNs = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  const none = '--';
 
-  if (chkCursors.checked) {
-    const vdivMv = ScopeMath.parseVdivMv(meta[ch]);
-    if (live && vdivMv && tbNs) {
-      const r = ScopeMath.cursorReadout(scopeCursors, vdivMv, tbNs);
-      setText(scopeCursorReadout, t('scope.cursor_readout', {
-        dt: ScopeMath.formatTime(r.dtNs), freq: ScopeMath.formatFreq(r.freqHz), dv: ScopeMath.formatVoltage(r.dvMv),
-        v1: ScopeMath.formatVoltage(r.v1Mv), v2: ScopeMath.formatVoltage(r.v2Mv)
-      }));
-    } else {
-      setText(scopeCursorReadout, t('scope.measure_none'));
-    }
+  // Cursor table: time from the left edge of the screen, voltage from the zero line of the chosen channel
+  const cursorVdiv = vdiv[selCursorCh.value];
+  if (chkCursors.checked && live && cursorVdiv && tbNs) {
+    const r = ScopeMath.cursorReadout(scopeCursors, cursorVdiv, tbNs);
+    setCells('cur', {
+      X1: ScopeMath.formatTime(scopeCursors.x1 * tbNs), X2: ScopeMath.formatTime(scopeCursors.x2 * tbNs),
+      Dx: ScopeMath.formatTime(r.dtNs), Y1: ScopeMath.formatVoltage(r.v1Mv), Y2: ScopeMath.formatVoltage(r.v2Mv),
+      Dy: ScopeMath.formatVoltage(r.dvMv), Freq: ScopeMath.formatFreq(r.freqHz)
+    });
   } else {
-    setText(scopeCursorReadout, '');
+    setCells('cur', { X1: none, X2: none, Dx: none, Y1: none, Y2: none, Dy: none, Freq: none });
   }
 
-  const lines = [];
-  if (live) {
-    for (const [n, wave, enabled] of [[1, liveScopeWave1, liveScopeMeta.ch1En], [2, liveScopeWave2, liveScopeMeta.ch2En]]) {
-      const m = enabled && ScopeMath.measureWave(wave, ScopeMath.parseVdivMv(meta[n]), tbNs);
-      if (!m) continue;
-      lines.push(t('scope.measure_line', {
-        ch: `CH${n}`, vmax: ScopeMath.formatVoltage(m.vmax), vmin: ScopeMath.formatVoltage(m.vmin),
-        vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms),
-        freq: ScopeMath.formatFreq(m.freqHz), duty: m.dutyPct === null ? '--' : `${m.dutyPct.toFixed(0)} %`,
-        rise: m.riseNs === null ? '--' : ScopeMath.formatTime(m.riseNs)
-      }));
-    }
+  // Measurement table, one column per channel
+  for (const [n, wave, enabled] of [[1, liveScopeWave1, liveScopeMeta.ch1En], [2, liveScopeWave2, liveScopeMeta.ch2En]]) {
+    const m = live && enabled ? ScopeMath.measureWave(wave, vdiv[n], tbNs) : null;
+    setCells(`m${n}_`, m ? {
+      vpp: ScopeMath.formatVoltage(m.vpp), vmax: ScopeMath.formatVoltage(m.vmax), vmin: ScopeMath.formatVoltage(m.vmin),
+      vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms), freq: ScopeMath.formatFreq(m.freqHz),
+      duty: m.dutyPct === null ? none : `${m.dutyPct.toFixed(0)} %`, rise: m.riseNs === null ? none : ScopeMath.formatTime(m.riseNs)
+    } : { vpp: none, vmax: none, vmin: none, vmean: none, vrms: none, freq: none, duty: none, rise: none });
   }
-  setText(scopeMeasures, lines.length ? lines.join('\n') : t('scope.measure_none'));
 }
 
 function renderScope() {
