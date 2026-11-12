@@ -4,9 +4,9 @@ const M = require('../src/renderer/scope_math.js');
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || ''} ${a} !~ ${b}`);
 
-// 180 raw samples over 10 divisions, like the firmware stream
+// 180 raw samples over the full screen width, like the firmware stream
 function wave(fn, tbNs, n = 180) {
-  return Uint8Array.from({ length: n }, (_, i) => Math.round(fn((i / (n - 1)) * 10 * tbNs * 1e-9)));
+  return Uint8Array.from({ length: n }, (_, i) => Math.round(fn((i / (n - 1)) * M.X_DIVS * tbNs * 1e-9)));
 }
 
 test('parseVdivMv understands the firmware chip labels', () => {
@@ -57,7 +57,7 @@ test('measureWave rise time of a linear ramp edge', () => {
   // 0 -> 100% over 10 samples, repeated
   const s = Uint8Array.from({ length: 180 }, (_, i) => 96 + Math.min(64, (i % 40) * 6.4));
   const m = M.measureWave(s, 1000, 1e6);
-  const samplePeriodNs = 1e6 * 10 / 179;
+  const samplePeriodNs = (1e6 * M.X_DIVS) / 179;
   near(m.riseNs, 0.8 * 10 * samplePeriodNs, samplePeriodNs * 1.5, 'rise');
 });
 

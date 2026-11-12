@@ -5,7 +5,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BusDecode = api;
 })(typeof self !== 'undefined' ? self : this, function () {
-  const X_DIVS = 10;
+  // 12 divisions wide, as the firmware draws it (SCOPE_X_DIVS).
+  const X_DIVS = 12;
   const MIN_SPAN_COUNTS = 8;
   const MIN_SAMPLES_PER_BIT = 3;
   const STANDARD_BAUDS = [300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];

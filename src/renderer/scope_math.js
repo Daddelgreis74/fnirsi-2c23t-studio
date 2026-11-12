@@ -4,7 +4,10 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScopeMath = api;
 })(typeof self !== 'undefined' ? self : this, function () {
-  const X_DIVS = 10;
+  // The device screen is 12 divisions wide and 8 high (SCOPE_X_DIVS and
+  // SCOPE_Y_DIVS in the firmware). Using 10 made every time measurement 20%
+  // off: a 1000.000 Hz reference was reported as 1192 Hz.
+  const X_DIVS = 12;
   const Y_DIVS = 8;
   const RAW_ZERO = 128;
   const RAW_FULL = 255;

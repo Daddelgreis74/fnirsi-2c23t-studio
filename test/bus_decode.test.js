@@ -26,7 +26,7 @@ test('digitize thresholds at mid level and rejects flat signals', () => {
 test('decodeUart reads 8N1 bytes at a given baud rate', () => {
   const spb = 6;
   const wave = frame([...rep(1, 10), ...uartBits(0x41, spb), ...rep(1, 4), ...uartBits(0x5a, spb), ...rep(1, 10)]);
-  const samplePeriodNs = 1e6 * 10 / 179;
+  const samplePeriodNs = 1e6 * 12 / 179;
   const baud = 1e9 / (spb * samplePeriodNs);
   const r = B.decodeUart(wave, { baud, tbNs: 1e6 });
   assert.deepStrictEqual(r.bytes.map((b) => b.value), [0x41, 0x5a]);
@@ -35,7 +35,7 @@ test('decodeUart reads 8N1 bytes at a given baud rate', () => {
 
 test('decodeUart refuses signals that are too fast for the time base', () => {
   const wave = frame([...rep(1, 10), ...uartBits(0x41, 2), ...rep(1, 10)]);
-  const baud = 1e9 / (2 * 1e6 * 10 / 179);
+  const baud = 1e9 / (2 * 1e6 * 12 / 179);
   assert.strictEqual(B.decodeUart(wave, { baud, tbNs: 1e6 }).error, 'too_fast');
 });
 
@@ -44,14 +44,14 @@ test('decodeUart does not report a frame whose stop bit is low (framing error)',
   const bad = uartBits(0x41, spb);
   for (let i = bad.length - spb; i < bad.length; i++) bad[i] = 0;
   const wave = frame([...rep(1, 10), ...bad, ...rep(1, 10)]);
-  const baud = 1e9 / (spb * 1e6 * 10 / 179);
+  const baud = 1e9 / (spb * 1e6 * 12 / 179);
   assert.ok(!B.decodeUart(wave, { baud, tbNs: 1e6 }).bytes.some((b) => b.value === 0x41));
 });
 
 test('estimateBaud snaps the shortest pulse to a standard rate', () => {
   const spb = 6;
   const wave = frame([...rep(1, 10), ...uartBits(0x55, spb), ...rep(1, 10)]);
-  const samplePeriodNs = 1e6 * 10 / 179;
+  const samplePeriodNs = 1e6 * 12 / 179;
   const exact = 1e9 / (spb * samplePeriodNs);
   const std = B.STANDARD_BAUDS.reduce((a, b) => (Math.abs(b - exact) < Math.abs(a - exact) ? b : a));
   assert.strictEqual(B.estimateBaud(wave, 1e6), std);
