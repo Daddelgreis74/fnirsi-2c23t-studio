@@ -1700,3 +1700,48 @@ function applyLanguage(lang) {
 
 selLanguage.addEventListener('change', () => applyLanguage(selLanguage.value));
 applyLanguage(translator.lang);
+
+// ==========================================
+// THEME AND KEYBOARD SHORTCUTS (see shortcuts.js)
+// ==========================================
+function applyTheme(theme) {
+  theme = Shortcuts.normalizeTheme(theme);
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('theme', theme);
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+}
+
+applyTheme(localStorage.getItem('theme'));
+document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+
+const SHORTCUT_ACTIONS = {
+  'tab-dmm': () => onTabClick('dmm'),
+  'tab-scope': () => onTabClick('scope'),
+  'tab-generator': () => onTabClick('generator'),
+  'scope-run': () => document.getElementById('btnScopeRun').click(),
+  'scope-auto': () => document.getElementById('btnScopeAuto')?.click(),
+  'scope-cursors': () => chkCursors.click(),
+  'dmm-hold': () => btnDmmHold?.click(),
+  'dmm-rel': () => document.getElementById('btnDmmRel')?.click(),
+  theme: toggleTheme,
+  help: () => showToast(t('toast.shortcuts'), 6000)
+};
+
+document.addEventListener('keydown', (e) => {
+  const el = e.target;
+  // Space activates a focused button or checkbox natively: leave it alone there
+  const isControl = el && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName);
+  const isTextField = el && (/^(TEXTAREA|SELECT)$/.test(el.tagName) || (el.tagName === 'INPUT' && !/^(checkbox|range|button)$/.test(el.type)));
+  const typing = el && (isTextField || el.isContentEditable || (e.key === ' ' && isControl));
+  const activeTab = document.querySelector('.nav-item.active');
+  const action = Shortcuts.actionForKey({
+    key: e.key, tab: activeTab ? activeTab.dataset.tab : '', typing: !!typing,
+    ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey
+  });
+  if (!action) return;
+  e.preventDefault();
+  SHORTCUT_ACTIONS[action]();
+});

@@ -1255,3 +1255,22 @@ input[type="range"] {
 .dmm-in-band {
   text-shadow: 0 0 14px #10b981;
 }
+
+/* --- LIGHT THEME (the scope screen stays dark, like the real display) --- */
+:root[data-theme="light"] {
+  --bg-main: #eef2f7;
+  --bg-sidebar: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: rgba(241, 245, 249, 1);
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --border-glow: rgba(2, 132, 199, 0.35);
+
+  --color-cyan: #0284c7;
+  --color-cyan-glow: rgba(2, 132, 199, 0.35);
+  --color-amber: #ea580c;
+  --color-green: #059669;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+}

@@ -10,6 +10,8 @@
   "header.hw_checking": "HW: Prüfe...",
   "header.drive_none": "Laufwerk: --",
   "header.drive": "Laufwerk: {drive}",
+  "header.theme": "Design wechseln (T)",
+  "toast.shortcuts": "Tastenkürzel: 1/2/3 Instrument · Leertaste Run/Stop bzw. Hold · A Auto · H Hold · R Rel · C Cursor · T Design",
   "header.rescan": "Gerät neu scannen",
   "header.open_drive": "Geräte-Laufwerk im Explorer öffnen",
   "header.language": "Sprache",

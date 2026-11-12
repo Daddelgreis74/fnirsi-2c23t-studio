@@ -10,6 +10,8 @@
   "header.hw_checking": "HW : vérification...",
   "header.drive_none": "Lecteur : --",
   "header.drive": "Lecteur : {drive}",
+  "header.theme": "Changer de thème (T)",
+  "toast.shortcuts": "Raccourcis : 1/2/3 instrument · Espace Run/Stop ou Hold · A Auto · H Hold · R Rel · C curseurs · T thème",
   "header.rescan": "Rescanner l'appareil",
   "header.open_drive": "Ouvrir le lecteur de l'appareil dans l'Explorateur",
   "header.language": "Langue",

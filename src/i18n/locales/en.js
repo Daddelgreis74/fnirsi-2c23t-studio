@@ -10,6 +10,8 @@
   "header.hw_checking": "HW: checking...",
   "header.drive_none": "Drive: --",
   "header.drive": "Drive: {drive}",
+  "header.theme": "Switch theme (T)",
+  "toast.shortcuts": "Shortcuts: 1/2/3 instrument · Space Run/Stop or Hold · A Auto · H Hold · R Rel · C cursors · T theme",
   "header.rescan": "Rescan device",
   "header.open_drive": "Open device drive in Explorer",
   "header.language": "Language",
