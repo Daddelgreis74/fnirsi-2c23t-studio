@@ -14,6 +14,9 @@
   // Numerator and denominator of the firmware conversion (see rawToMv).
   const RAW_MV_NUM = 754;
   const RAW_MV_DEN = 20000;
+  // Raw counts spanning one vertical division: RAW_MV_DEN / RAW_MV_NUM = 26.53.
+  // Not 255/Y_DIVS = 32, which is what the trace drawing used to assume.
+  const COUNTS_PER_DIV = RAW_MV_DEN / RAW_MV_NUM;
 
   // Firmware chip labels: volts per division "20M" / "1V" and time per division "50N" / "1M" / "5S".
   function parseVdivMv(label) {
@@ -148,5 +151,5 @@
     return list[Math.max(0, Math.min(list.length - 1, i))];
   }
 
-  return { stepInList, X_DIVS, Y_DIVS, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, mathTrace, xyPoints, cursorReadout, formatVoltage, formatTime, formatFreq };
+  return { stepInList, X_DIVS, Y_DIVS, COUNTS_PER_DIV, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, mathTrace, xyPoints, cursorReadout, formatVoltage, formatTime, formatFreq };
 });

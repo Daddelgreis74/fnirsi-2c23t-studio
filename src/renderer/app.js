@@ -1339,7 +1339,7 @@ function drawXY(points, centerX, centerY, divX, divY) {
   scopeCtx.strokeStyle = '#4ade80';
   scopeCtx.lineWidth = 2;
   scopeCtx.shadowColor = '#4ade80';
-  scopeCtx.shadowBlur = 8;
+  scopeCtx.shadowBlur = 0;
   scopeCtx.beginPath();
   points.forEach((p, i) => {
     const x = centerX + p.x * divX;
@@ -1547,14 +1547,14 @@ function renderScope() {
       scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
       scopeCtx.shadowColor = '#facc15';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
       const n = liveScopeWave1.length;
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave1[i];
         const delta = raw - 128;
-        const y = ch1CenterY - (delta / 32) * divY;
+        const y = ch1CenterY - (delta / ScopeMath.COUNTS_PER_DIV) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1567,14 +1567,14 @@ function renderScope() {
       scopeCtx.strokeStyle = '#00f2fe';
       scopeCtx.lineWidth = 2.2;
       scopeCtx.shadowColor = '#00f2fe';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
       const n = liveScopeWave2.length;
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave2[i];
         const delta = raw - 128;
-        const y = ch2CenterY - (delta / 32) * divY;
+        const y = ch2CenterY - (delta / ScopeMath.COUNTS_PER_DIV) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1591,7 +1591,7 @@ function renderScope() {
       scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
       scopeCtx.shadowColor = '#facc15';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
 
       for (let x = 0; x < width; x++) {
@@ -1617,7 +1617,7 @@ function renderScope() {
       scopeCtx.strokeStyle = '#00f2fe';
       scopeCtx.lineWidth = 2.2;
       scopeCtx.shadowColor = '#00f2fe';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
 
       for (let x = 0; x < width; x++) {
