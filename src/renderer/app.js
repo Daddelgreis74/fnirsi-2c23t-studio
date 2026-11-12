@@ -74,10 +74,25 @@ let deviceModeKnown = false;
 
 // Ask the device to follow the tab the user picked (firmware: MODE:SCOPE|DMM|GEN)
 const DEVICE_MODE_BY_TAB = { dmm: 'DMM', scope: 'SCOPE', generator: 'GEN' };
+let pendingMode = null;
+let pendingTimer = null;
+
+// The device answers every switch with $MODE; if that answer does not come, send the command again (twice at most).
+function sendModeCommand(mode, attempt) {
+  window.api.sendDmmCommand('MODE:' + mode);
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    if (pendingMode !== mode) return;
+    if (attempt >= 2) { pendingMode = null; return; }
+    sendModeCommand(mode, attempt + 1);
+  }, 1500);
+}
+
 function requestDeviceMode(tab) {
   const mode = DEVICE_MODE_BY_TAB[tab];
   if (mode && isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
-    window.api.sendDmmCommand('MODE:' + mode);
+    pendingMode = mode;
+    sendModeCommand(mode, 0);
     deviceModeKnown = true; // from now on only the device's $MODE answer moves the tab, not stray data frames
   }
 }
@@ -860,6 +875,7 @@ function processLiveSerialLine(line) {
   const info = TabSync.lineInfo(line);
   const tab = TabSync.tabForLine(info, deviceModeKnown);
   if (info) deviceModeKnown = true;
+  if (info && info.announced && info.mode === pendingMode) { pendingMode = null; clearTimeout(pendingTimer); }
   if (tab) switchTab(tab);
   if (line.startsWith('$MODE,')) return;
 
