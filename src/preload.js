@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('api', {
   onDmmStatus: (callback) => ipcRenderer.on('dmm:serial-status', (_event, status) => callback(status)),
   onDmmLog: (callback) => ipcRenderer.on('dmm:serial-log', (_event, log) => callback(log)),
   reconnectSerial: () => ipcRenderer.invoke('dmm:reconnect-serial'),
+  setLanguage: (lang) => ipcRenderer.invoke('i18n:set-language', lang),
   sendDmmCommand: (cmd) => ipcRenderer.invoke('dmm:send-command', cmd)
 });

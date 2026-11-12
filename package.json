@@ -8,6 +8,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
+    "test": "node --test",
     "dist": "electron-builder --win",
     "dist:portable": "electron-builder --win portable",
     "dist:nsis": "electron-builder --win nsis"
