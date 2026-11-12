@@ -1285,3 +1285,14 @@ input[type="range"] {
   font-family: 'Cascadia Code', monospace;
   font-size: 11px;
 }
+
+.bus-output {
+  margin-top: 8px;
+  min-height: 2.4em;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+}

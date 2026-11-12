@@ -416,6 +416,30 @@
               </div>
 
               <div class="control-box">
+                <h3 data-i18n="scope.bus_title">Bus-Dekodierung</h3>
+                <div class="controls-toolbar">
+                  <select id="selBusProto">
+                    <option value="" data-i18n="scope.bus_off">Aus</option>
+                    <option value="uart" data-i18n="scope.bus_uart">UART (CH1)</option>
+                    <option value="i2c" data-i18n="scope.bus_i2c">I²C (CH1=SCL, CH2=SDA)</option>
+                    <option value="spi" data-i18n="scope.bus_spi">SPI (CH1=CLK, CH2=Daten)</option>
+                  </select>
+                  <label><span data-i18n="scope.bus_baud">Baud:</span>
+                    <select id="selBusBaud">
+                      <option value="auto" data-i18n="scope.bus_auto">Auto</option>
+                      <option value="1200">1200</option>
+                      <option value="2400">2400</option>
+                      <option value="4800">4800</option>
+                      <option value="9600">9600</option>
+                      <option value="19200">19200</option>
+                      <option value="115200">115200</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="bus-output" id="busOutput"></div>
+              </div>
+
+              <div class="control-box">
                 <h3 data-i18n="scope.timebase">Zeitbasis (Time/Div)</h3>
                 <div class="btn-grid-row">
                   <button class="btn-pill" data-timebase="0.5">500µs</button>
@@ -571,6 +595,7 @@
   <script src="../i18n/locales/en.js"></script>
   <script src="tab_sync.js"></script>
   <script src="scope_math.js"></script>
+  <script src="bus_decode.js"></script>
   <script src="scope_captures.js"></script>
   <script src="dmm_alert.js"></script>
   <script src="shortcuts.js"></script>

@@ -1353,6 +1353,46 @@ chkXY.addEventListener('change', () => {
   if (chkXY.checked && !(liveScopeMeta.ch1En && liveScopeMeta.ch2En)) showToast(t('scope.xy_need_both'));
 });
 
+// Bus decoding of the current frame (see bus_decode.js). The last decoded text stays visible for 2 s
+// because a 180-sample frame often holds nothing decodable while the bus is idle between frames.
+const selBusProto = document.getElementById('selBusProto');
+const selBusBaud = document.getElementById('selBusBaud');
+const busOutput = document.getElementById('busOutput');
+let busLastText = '';
+let busLastAt = 0;
+
+function decodeBusFrame(proto) {
+  const tbNs = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  if (proto === 'uart') {
+    if (!liveScopeMeta.ch1En || !tbNs) return { text: '' };
+    let baud = selBusBaud.value === 'auto' ? BusDecode.estimateBaud(liveScopeWave1, tbNs) : Number(selBusBaud.value);
+    if (!baud) return { note: t('scope.bus_no_baud') };
+    const r = BusDecode.decodeUart(liveScopeWave1, { baud, tbNs });
+    if (r.error === 'too_fast') return { note: t('scope.bus_too_fast') };
+    return { text: BusDecode.formatBytes(r.bytes), prefix: t('scope.bus_baud_found', { baud }) };
+  }
+  if (!liveScopeMeta.ch1En || !liveScopeMeta.ch2En) return { note: t('scope.bus_need_both') };
+  if (proto === 'i2c') return { text: BusDecode.formatI2c(BusDecode.decodeI2c(liveScopeWave1, liveScopeWave2)) };
+  return { text: BusDecode.formatBytes(BusDecode.decodeSpi(liveScopeWave1, liveScopeWave2)) };
+}
+
+function updateBusDecode(live) {
+  const proto = selBusProto.value;
+  selBusBaud.disabled = proto !== 'uart';
+  if (!proto) { setText(busOutput, ''); busLastText = ''; return; }
+  if (!live) { setText(busOutput, t('scope.bus_no_live')); return; }
+  const r = decodeBusFrame(proto);
+  if (r.note) { setText(busOutput, r.note); return; }
+  const now = Date.now();
+  if (r.text) {
+    busLastText = r.prefix ? `${r.prefix}\n${r.text}` : r.text;
+    busLastAt = now;
+  } else if (now - busLastAt > 2000) {
+    busLastText = '';
+  }
+  setText(busOutput, busLastText || t('scope.bus_nothing'));
+}
+
 function setCells(prefix, values) {
   for (const [key, text] of Object.entries(values)) setText(document.getElementById(prefix + key), text);
 }
@@ -1580,6 +1620,7 @@ function renderScope() {
     drawCursors(selCursorCh.value === '2' ? ch2CenterY : ch1CenterY, divX, divY, width, height);
   }
   updateScopeReadouts(hasHardwareWave);
+  updateBusDecode(hasHardwareWave);
 
   requestAnimationFrame(renderScope);
 }
