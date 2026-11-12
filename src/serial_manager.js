@@ -50,6 +50,19 @@ class SerialManager {
     }, 2500);
   }
 
+  // Scope frames arrive about 15 times a second and are long: log at most one of each kind per second
+  // so the log file and the serial monitor stay light (the lines are still processed).
+  shouldLogRx(line) {
+    const m = /^\$(SCOPE|WAVE),?(\d?)/.exec(line);
+    if (!m) return true;
+    const key = m[1] + m[2];
+    const now = Date.now();
+    this.lastRxLog = this.lastRxLog || {};
+    if (now - (this.lastRxLog[key] || 0) < 1000) return false;
+    this.lastRxLog[key] = now;
+    return true;
+  }
+
   emitLog(type, text) {
     const time = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
     this.logToFile(`${type.toUpperCase()}: ${text}`);
@@ -181,7 +194,7 @@ Add-Type -TypeDefinition $code
             }
           } else if (trimmed.startsWith('[RX]:')) {
             const rxLine = trimmed.substring(5);
-            this.emitLog('rx', rxLine);
+            if (this.shouldLogRx(rxLine)) this.emitLog('rx', rxLine);
             if (this.onLineCallback) {
               this.onLineCallback(rxLine);
             }
