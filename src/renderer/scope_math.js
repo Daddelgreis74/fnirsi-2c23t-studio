@@ -86,6 +86,19 @@
     return result;
   }
 
+  // Maths trace in millivolts from both channels (each converted with its own V/div), or null.
+  function mathTrace(op, wave1, wave2, vdiv1Mv, vdiv2Mv) {
+    const sign = { add: 1, sub: -1 }[op];
+    if (!sign || !wave1 || !wave2 || wave1.length !== wave2.length || !vdiv1Mv || !vdiv2Mv) return null;
+    return Array.from(wave1, (r, i) => rawToMv(r, vdiv1Mv) + sign * rawToMv(wave2[i], vdiv2Mv));
+  }
+
+  // XY mode: CH1 drives X, CH2 drives Y; points in divisions from the screen centre (+y is up), or null.
+  function xyPoints(wave1, wave2, vdiv1Mv, vdiv2Mv) {
+    if (!wave1 || !wave2 || wave1.length !== wave2.length || !vdiv1Mv || !vdiv2Mv) return null;
+    return Array.from(wave1, (r, i) => ({ x: rawToMv(r, vdiv1Mv) / vdiv1Mv, y: rawToMv(wave2[i], vdiv2Mv) / vdiv2Mv }));
+  }
+
   // Cursor positions are in divisions: x from the left edge (0..10), y from the channel centre (+ is up).
   function cursorReadout({ x1, x2, y1, y2 }, vdivMv, tbNs) {
     const dtNs = Math.abs(x2 - x1) * tbNs;
@@ -116,5 +129,5 @@
     return `${hz.toFixed(1)} Hz`;
   }
 
-  return { X_DIVS, Y_DIVS, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, cursorReadout, formatVoltage, formatTime, formatFreq };
+  return { X_DIVS, Y_DIVS, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, mathTrace, xyPoints, cursorReadout, formatVoltage, formatTime, formatFreq };
 });

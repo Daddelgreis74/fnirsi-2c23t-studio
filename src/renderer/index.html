@@ -330,6 +330,14 @@
               <label><input type="checkbox" id="chkCh2" checked> <span class="badge-ch2">CH2</span></label>
               <label><input type="checkbox" id="chkFft"> <span data-i18n="scope.fft">FFT Spektrum</span></label>
               <label><input type="checkbox" id="chkPersist" checked> <span data-i18n="scope.phosphor">Phosphor</span></label>
+              <label><input type="checkbox" id="chkXY"> <span data-i18n="scope.xy">XY</span></label>
+              <label>
+                <select id="selMath" title="Math" data-i18n-title="scope.math_title">
+                  <option value="" data-i18n="scope.math_off">Math: aus</option>
+                  <option value="add">CH1 + CH2</option>
+                  <option value="sub">CH1 − CH2</option>
+                </select>
+              </label>
               <button class="btn-action" id="btnScopeAuto" style="background:#0284c7; margin-right:6px;">AUTO</button>
               <button class="btn-action" id="btnScopeRun">STOP</button>
             </div>

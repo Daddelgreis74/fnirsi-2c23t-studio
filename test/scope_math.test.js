@@ -115,3 +115,31 @@ test('formatters pick a readable unit', () => {
   assert.strictEqual(M.formatFreq(2.5e6), '2.500 MHz');
   assert.strictEqual(M.formatFreq(null), '--');
 });
+
+test('mathTrace adds or subtracts both channels in millivolts', () => {
+  const a = Uint8Array.from([128, 160, 96]);
+  const b = Uint8Array.from([128, 144, 128]);
+  const sum = M.mathTrace('add', a, b, 1000, 500);
+  const diff = M.mathTrace('sub', a, b, 1000, 500);
+  near(sum[1], M.rawToMv(160, 1000) + M.rawToMv(144, 500), 1e-9);
+  near(diff[2], M.rawToMv(96, 1000) - M.rawToMv(128, 500), 1e-9);
+  assert.strictEqual(sum.length, 3);
+});
+
+test('mathTrace needs both waves of the same length and a known operation', () => {
+  assert.strictEqual(M.mathTrace('add', null, new Uint8Array(3), 1000, 1000), null);
+  assert.strictEqual(M.mathTrace('add', new Uint8Array(2), new Uint8Array(3), 1000, 1000), null);
+  assert.strictEqual(M.mathTrace('div', new Uint8Array(3), new Uint8Array(3), 1000, 1000), null);
+});
+
+test('xyPoints puts CH1 on X and CH2 on Y, in divisions from the centre', () => {
+  const pts = M.xyPoints(Uint8Array.from([128, 160]), Uint8Array.from([128, 96]), 1000, 500);
+  assert.deepStrictEqual(pts[0], { x: 0, y: 0 });
+  near(pts[1].x, M.rawToMv(160, 1000) / 1000, 1e-9);
+  near(pts[1].y, M.rawToMv(96, 500) / 500, 1e-9);
+});
+
+test('xyPoints rejects missing or mismatched waves', () => {
+  assert.strictEqual(M.xyPoints(null, new Uint8Array(2), 1000, 1000), null);
+  assert.strictEqual(M.xyPoints(new Uint8Array(1), new Uint8Array(2), 1000, 1000), null);
+});

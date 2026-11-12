@@ -1304,6 +1304,55 @@ function drawReference(c, ch1CenterY, ch2CenterY, width, divY) {
   scopeCtx.restore();
 }
 
+// Maths trace and XY mode
+const chkXY = document.getElementById('chkXY');
+const selMath = document.getElementById('selMath');
+
+function drawXY(points, centerX, centerY, divX, divY) {
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#4ade80';
+  scopeCtx.lineWidth = 2;
+  scopeCtx.shadowColor = '#4ade80';
+  scopeCtx.shadowBlur = 8;
+  scopeCtx.beginPath();
+  points.forEach((p, i) => {
+    const x = centerX + p.x * divX;
+    const y = centerY - p.y * divY;
+    if (i === 0) scopeCtx.moveTo(x, y);
+    else scopeCtx.lineTo(x, y);
+  });
+  scopeCtx.stroke();
+  scopeCtx.restore();
+}
+
+// Sum / difference of both channels, drawn around the screen centre on the CH1 scale
+function drawMath(op, centerY, width, divY, height) {
+  const vdiv1 = ScopeMath.parseVdivMv(liveScopeMeta.v1);
+  const mv = liveScopeMeta.ch1En && liveScopeMeta.ch2En
+    ? ScopeMath.mathTrace(op, liveScopeWave1, liveScopeWave2, vdiv1, ScopeMath.parseVdivMv(liveScopeMeta.v2))
+    : null;
+  if (!mv) return;
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#c084fc';
+  scopeCtx.lineWidth = 2;
+  scopeCtx.beginPath();
+  mv.forEach((value, i) => {
+    const x = (i / (mv.length - 1)) * width;
+    const y = centerY - (value / vdiv1) * divY;
+    if (i === 0) scopeCtx.moveTo(x, y);
+    else scopeCtx.lineTo(x, y);
+  });
+  scopeCtx.stroke();
+  scopeCtx.fillStyle = '#c084fc';
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.fillText(t('scope.math_label', { op: op === 'add' ? 'CH1+CH2' : 'CH1-CH2', vdiv: liveScopeMeta.v1 }), 14, height - 28);
+  scopeCtx.restore();
+}
+
+chkXY.addEventListener('change', () => {
+  if (chkXY.checked && !(liveScopeMeta.ch1En && liveScopeMeta.ch2En)) showToast(t('scope.xy_need_both'));
+});
+
 function setCells(prefix, values) {
   for (const [key, text] of Object.entries(values)) setText(document.getElementById(prefix + key), text);
 }
@@ -1420,7 +1469,13 @@ function renderScope() {
     scopeCtx.fill();
   }
 
-  if (hasHardwareWave) {
+  const xyPoints = chkXY.checked && hasHardwareWave && liveScopeMeta.ch1En && liveScopeMeta.ch2En
+    ? ScopeMath.xyPoints(liveScopeWave1, liveScopeWave2, ScopeMath.parseVdivMv(liveScopeMeta.v1), ScopeMath.parseVdivMv(liveScopeMeta.v2))
+    : null;
+
+  if (xyPoints) {
+    drawXY(xyPoints, width / 2, centerY, divX, divY);
+  } else if (hasHardwareWave) {
     // REAL HARDWARE CH1 WAVE (Gelb, Hardware-Kanal 1 oben)
     if (showCh1 && liveScopeWave1 && liveScopeWave1.length > 1) {
       scopeCtx.strokeStyle = '#facc15';
@@ -1518,6 +1573,7 @@ function renderScope() {
     document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
   }
 
+  if (!xyPoints && hasHardwareWave && selMath.value) drawMath(selMath.value, centerY, width, divY, height);
   const refCapture = chkCaptureOverlay.checked ? selectedCapture() : undefined;
   if (refCapture) drawReference(refCapture, ch1CenterY, ch2CenterY, width, divY);
   if (chkCursors.checked) {
