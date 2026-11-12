@@ -110,10 +110,20 @@ test('formatters pick a readable unit', () => {
   assert.strictEqual(M.formatTime(800), '800 ns');
   assert.strictEqual(M.formatTime(3e9), '3.00 s');
   assert.strictEqual(M.formatTime(12e3), '12.0 µs');
-  assert.strictEqual(M.formatFreq(1500), '1.50 kHz');
-  assert.strictEqual(M.formatFreq(25), '25.0 Hz');
-  assert.strictEqual(M.formatFreq(2.5e6), '2.500 MHz');
   assert.strictEqual(M.formatFreq(null), '--');
+});
+
+test('formatFreq stays in hertz unless a multiple is asked for', () => {
+  // Hertz by default, keeping every digit the measurement carries.
+  assert.strictEqual(M.formatFreq(1995), '1995 Hz');
+  assert.strictEqual(M.formatFreq(2.5e6), '2500000 Hz');
+  assert.strictEqual(M.formatFreq(123.456), '123.5 Hz');
+  assert.strictEqual(M.formatFreq(25), '25.00 Hz');
+
+  // An explicit multiple keeps the resolution instead of truncating it.
+  assert.strictEqual(M.formatFreq(1995, 'kHz'), '1.995 kHz');
+  assert.strictEqual(M.formatFreq(2.5e6, 'MHz'), '2.500000 MHz');
+  assert.strictEqual(M.formatFreq(1995, 'Hz'), '1995 Hz');
 });
 
 test('mathTrace adds or subtracts both channels in millivolts', () => {

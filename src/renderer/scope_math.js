@@ -136,11 +136,17 @@
     return `${Math.round(ns)} ns`;
   }
 
-  function formatFreq(hz) {
+  // Hertz by default: switching to kilo or mega silently drops significant
+  // digits, which is the opposite of what a frequency reading is for
+  // (1995 Hz shown as "1.99 kHz" loses 5 Hz). `unit` lets the caller ask for
+  // 'Hz', 'kHz' or 'MHz' explicitly, with enough decimals to lose nothing.
+  function formatFreq(hz, unit) {
     if (hz === null || hz === undefined || !isFinite(hz)) return '--';
-    if (hz >= 1e6) return `${(hz / 1e6).toFixed(3)} MHz`;
-    if (hz >= 1e3) return `${(hz / 1e3).toFixed(2)} kHz`;
-    return `${hz.toFixed(1)} Hz`;
+    if (unit === 'MHz') return `${(hz / 1e6).toFixed(6)} MHz`;
+    if (unit === 'kHz') return `${(hz / 1e3).toFixed(3)} kHz`;
+    if (hz >= 1e3) return `${hz.toFixed(0)} Hz`;
+    if (hz >= 100) return `${hz.toFixed(1)} Hz`;
+    return `${hz.toFixed(2)} Hz`;
   }
 
   function stepInList(list, current, dir) {
