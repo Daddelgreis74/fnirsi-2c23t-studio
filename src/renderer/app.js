@@ -1446,7 +1446,7 @@ function updateScopeReadouts(live) {
     const m = live && enabled ? ScopeMath.measureWave(wave, vdiv[n], tbNs) : null;
     setCells(`m${n}_`, m ? {
       vpp: ScopeMath.formatVoltage(m.vpp), vmax: ScopeMath.formatVoltage(m.vmax), vmin: ScopeMath.formatVoltage(m.vmin),
-      vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms), freq: ScopeMath.formatFreq(m.freqHz),
+      vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms), freq: ScopeMath.formatFreq(m.freqHz, freqUnit),
       duty: m.dutyPct === null ? none : `${m.dutyPct.toFixed(0)} %`, rise: m.riseNs === null ? none : ScopeMath.formatTime(m.riseNs)
     } : { vpp: none, vmax: none, vmin: none, vmean: none, vrms: none, freq: none, duty: none, rise: none });
   }
@@ -1920,6 +1920,31 @@ function toggleTheme() {
 
 applyTheme(localStorage.getItem('theme'));
 document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+
+// Frequency unit, cycled by the button next to the measurement row. Hertz
+// first: a multiple truncates digits the measurement actually carries.
+const FREQ_UNITS = ['Hz', 'kHz', 'MHz'];
+let freqUnit = FREQ_UNITS.includes(localStorage.getItem('freqUnit'))
+  ? localStorage.getItem('freqUnit')
+  : 'Hz';
+
+function applyFreqUnit(unit) {
+  freqUnit = FREQ_UNITS.includes(unit) ? unit : 'Hz';
+  localStorage.setItem('freqUnit', freqUnit);
+  const btn = document.getElementById('btnFreqUnit');
+  if (btn) btn.innerText = freqUnit;
+  updateScopeReadouts();
+}
+
+function cycleFreqUnit() {
+  applyFreqUnit(FREQ_UNITS[(FREQ_UNITS.indexOf(freqUnit) + 1) % FREQ_UNITS.length]);
+}
+
+const btnFreqUnit = document.getElementById('btnFreqUnit');
+if (btnFreqUnit) {
+  btnFreqUnit.innerText = freqUnit;
+  btnFreqUnit.addEventListener('click', cycleFreqUnit);
+}
 
 const SHORTCUT_ACTIONS = {
   'tab-dmm': () => onTabClick('dmm'),

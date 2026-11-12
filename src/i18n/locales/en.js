@@ -95,6 +95,7 @@
   "scope.m_vmean": "Vavg",
   "scope.m_vrms": "Vrms",
   "scope.m_freq": "Frequency",
+  "scope.freq_unit_hint": "Switch unit: Hz / kHz / MHz",
   "scope.m_duty": "Duty cycle",
   "scope.m_rise": "Rise time",
   "scope.captures_title": "Captures",

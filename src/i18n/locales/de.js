@@ -95,6 +95,7 @@
   "scope.m_vmean": "Vmittel",
   "scope.m_vrms": "Veff",
   "scope.m_freq": "Frequenz",
+  "scope.freq_unit_hint": "Einheit umschalten: Hz / kHz / MHz",
   "scope.m_duty": "Tastgrad",
   "scope.m_rise": "Anstiegszeit",
   "scope.captures_title": "Aufnahmen",

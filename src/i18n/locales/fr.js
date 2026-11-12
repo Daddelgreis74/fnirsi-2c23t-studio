@@ -95,6 +95,7 @@
   "scope.m_vmean": "Vmoy",
   "scope.m_vrms": "Veff",
   "scope.m_freq": "Fréquence",
+  "scope.freq_unit_hint": "Changer d'unité : Hz / kHz / MHz",
   "scope.m_duty": "Rapport cyclique",
   "scope.m_rise": "Temps de montée",
   "scope.captures_title": "Captures",

@@ -1355,3 +1355,25 @@ input[type="range"] {
 body.live-link .gen-live-hint { display: block; }
 body.live-link [data-subpane="gen"] .sig-presets,
 body.live-link [data-subpane="gen"] .slider-group { display: none; }
+
+/* Cycles the frequency unit shown in the measurement table (Hz / kHz / MHz).
+   Sized to sit inside the row header without changing the table layout. */
+.btn-unit {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 1px 5px;
+  margin-left: 6px;
+  border-radius: 5px;
+  font-weight: 600;
+  font-size: 10px;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-unit:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
