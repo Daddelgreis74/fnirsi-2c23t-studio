@@ -1225,6 +1225,85 @@ function drawCursors(centerY, divX, divY, width, height) {
   scopeCtx.restore();
 }
 
+// Capture history: snapshots of the streamed waveforms, shown as a reference overlay or exported to CSV
+const captures = ScopeCaptures.createStore(20);
+const selCaptures = document.getElementById('selCaptures');
+const chkCaptureOverlay = document.getElementById('chkCaptureOverlay');
+
+function selectedCapture() {
+  return selCaptures.value ? captures.get(Number(selCaptures.value)) : undefined;
+}
+
+function refreshCaptureList(selectId) {
+  selCaptures.innerHTML = '';
+  for (const c of captures.list()) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = ScopeCaptures.captureLabel(c);
+    selCaptures.appendChild(opt);
+  }
+  const last = captures.list().slice(-1)[0];
+  if (selectId !== undefined) selCaptures.value = selectId;
+  else if (last) selCaptures.value = last.id;
+}
+
+function takeCapture() {
+  const snapshot = {
+    tb: liveScopeMeta.tb, v1: liveScopeMeta.v1, v2: liveScopeMeta.v2,
+    ch1En: liveScopeMeta.ch1En, ch2En: liveScopeMeta.ch2En,
+    wave1: liveScopeWave1, wave2: liveScopeWave2, takenAt: new Date()
+  };
+  if (Date.now() - lastScopeWaveTime >= 2500 || !ScopeCaptures.isCapturable(snapshot)) {
+    showToast(t('toast.no_capture'));
+    return;
+  }
+  const c = captures.add(snapshot);
+  refreshCaptureList(c.id);
+  showToast(t('toast.capture_taken', { id: c.id }));
+}
+
+document.getElementById('btnCapture').addEventListener('click', takeCapture);
+document.getElementById('btnCaptureDelete').addEventListener('click', () => {
+  const c = selectedCapture();
+  if (!c) return;
+  captures.remove(c.id);
+  refreshCaptureList();
+});
+document.getElementById('btnCaptureCsv').addEventListener('click', async () => {
+  const c = selectedCapture();
+  if (!c) return;
+  const res = await window.api.saveCsv(`Oszilloskop_Aufnahme_${c.id}.csv`, ScopeCaptures.captureToCsv(c));
+  if (res && res.success) showToast(t('toast.csv_saved', { path: res.filePath }));
+});
+
+// Reference trace of the selected capture, drawn in white over the live traces (scaled to the current V/div)
+function drawReference(c, ch1CenterY, ch2CenterY, width, divY) {
+  scopeCtx.save();
+  scopeCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  scopeCtx.lineWidth = 1.5;
+  scopeCtx.setLineDash([5, 4]);
+  for (const [wave, enabled, capVdiv, curVdiv, centerY] of [
+    [c.wave1, c.ch1En, c.v1, liveScopeMeta.v1, ch1CenterY], [c.wave2, c.ch2En, c.v2, liveScopeMeta.v2, ch2CenterY]
+  ]) {
+    const capMv = ScopeMath.parseVdivMv(capVdiv);
+    const curMv = ScopeMath.parseVdivMv(curVdiv) || capMv;
+    if (!wave || !enabled || !capMv) continue;
+    scopeCtx.beginPath();
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * width;
+      const y = centerY - (ScopeMath.rawToMv(wave[i], capMv) / curMv) * divY;
+      if (i === 0) scopeCtx.moveTo(x, y);
+      else scopeCtx.lineTo(x, y);
+    }
+    scopeCtx.stroke();
+  }
+  scopeCtx.setLineDash([]);
+  scopeCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.fillText(t('scope.capture_ref', { label: ScopeCaptures.captureLabel(c) }), 14, 14);
+  scopeCtx.restore();
+}
+
 function setCells(prefix, values) {
   for (const [key, text] of Object.entries(values)) setText(document.getElementById(prefix + key), text);
 }
@@ -1439,6 +1518,8 @@ function renderScope() {
     document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
   }
 
+  const refCapture = chkCaptureOverlay.checked ? selectedCapture() : undefined;
+  if (refCapture) drawReference(refCapture, ch1CenterY, ch2CenterY, width, divY);
   if (chkCursors.checked) {
     drawCursors(selCursorCh.value === '2' ? ch2CenterY : ch1CenterY, divX, divY, width, height);
   }
@@ -1724,6 +1805,7 @@ const SHORTCUT_ACTIONS = {
   'scope-run': () => document.getElementById('btnScopeRun').click(),
   'scope-auto': () => document.getElementById('btnScopeAuto')?.click(),
   'scope-cursors': () => chkCursors.click(),
+  'scope-capture': takeCapture,
   'dmm-hold': () => btnDmmHold?.click(),
   'dmm-rel': () => document.getElementById('btnDmmRel')?.click(),
   theme: toggleTheme,

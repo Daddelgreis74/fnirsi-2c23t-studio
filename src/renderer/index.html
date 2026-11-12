@@ -395,6 +395,19 @@
               </div>
 
               <div class="control-box">
+                <h3 data-i18n="scope.captures_title">Aufnahmen</h3>
+                <div class="controls-toolbar">
+                  <button class="btn-action" id="btnCapture" data-i18n="scope.capture">Aufnehmen</button>
+                  <label><input type="checkbox" id="chkCaptureOverlay"> <span data-i18n="scope.capture_overlay">Überlagern</span></label>
+                </div>
+                <select id="selCaptures" size="4" class="capture-list"></select>
+                <div class="controls-toolbar">
+                  <button class="btn-action" id="btnCaptureCsv" data-i18n="scope.capture_csv">CSV exportieren</button>
+                  <button class="btn-action" id="btnCaptureDelete" data-i18n="scope.capture_delete">Löschen</button>
+                </div>
+              </div>
+
+              <div class="control-box">
                 <h3 data-i18n="scope.timebase">Zeitbasis (Time/Div)</h3>
                 <div class="btn-grid-row">
                   <button class="btn-pill" data-timebase="0.5">500µs</button>
@@ -550,6 +563,7 @@
   <script src="../i18n/locales/en.js"></script>
   <script src="tab_sync.js"></script>
   <script src="scope_math.js"></script>
+  <script src="scope_captures.js"></script>
   <script src="dmm_alert.js"></script>
   <script src="shortcuts.js"></script>
   <script src="app.js"></script>

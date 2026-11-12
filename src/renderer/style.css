@@ -1274,3 +1274,14 @@ input[type="range"] {
   --text-muted: #475569;
   --text-dim: #64748b;
 }
+
+.capture-list {
+  width: 100%;
+  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: inherit;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 11px;
+}

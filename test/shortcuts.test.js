@@ -21,6 +21,8 @@ test('letter shortcuts are tab specific and case insensitive', () => {
   assert.strictEqual(k('A', { tab: 'scope' }), 'scope-auto');
   assert.strictEqual(k('a', { tab: 'dmm' }), null);
   assert.strictEqual(k('c', { tab: 'scope' }), 'scope-cursors');
+  assert.strictEqual(k('p', { tab: 'scope' }), 'scope-capture');
+  assert.strictEqual(k('p', { tab: 'dmm' }), null);
   assert.strictEqual(k('h', { tab: 'dmm' }), 'dmm-hold');
   assert.strictEqual(k('r', { tab: 'dmm' }), 'dmm-rel');
 });

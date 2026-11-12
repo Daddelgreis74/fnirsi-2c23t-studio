@@ -6,7 +6,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   const GLOBAL = { 1: 'tab-dmm', 2: 'tab-scope', 3: 'tab-generator', t: 'theme', '?': 'help' };
   const BY_TAB = {
-    scope: { ' ': 'scope-run', a: 'scope-auto', c: 'scope-cursors' },
+    scope: { ' ': 'scope-run', a: 'scope-auto', c: 'scope-cursors', p: 'scope-capture' },
     dmm: { ' ': 'dmm-hold', h: 'dmm-hold', r: 'dmm-rel' }
   };
 
