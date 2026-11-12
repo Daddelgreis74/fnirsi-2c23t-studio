@@ -3,6 +3,10 @@
   else (root.I18nLocales = root.I18nLocales || {}).fr = data;
 })(typeof self !== 'undefined' ? self : this, {
   "header.searching": "Recherche de l'appareil...",
+  "dmm.alert": "Bip à la valeur cible",
+  "dmm.alert_target": "Cible",
+  "dmm.alert_in_band": "● dans la plage",
+  "dmm.alert_hint": "La cible et la tolérance doivent être des nombres",
   "header.hw_checking": "HW : vérification...",
   "header.drive_none": "Lecteur : --",
   "header.drive": "Lecteur : {drive}",

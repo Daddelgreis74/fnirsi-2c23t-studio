@@ -199,6 +199,42 @@ function stopBuzzer() {
   }
 }
 
+// DMM value alert (checkbox + target + tolerance, see dmm_alert.js)
+const chkDmmAlert = document.getElementById('chkDmmAlert');
+const inpDmmAlertTarget = document.getElementById('inpDmmAlertTarget');
+const inpDmmAlertTol = document.getElementById('inpDmmAlertTol');
+const lblDmmAlertUnit = document.getElementById('lblDmmAlertUnit');
+const lblDmmAlertState = document.getElementById('lblDmmAlertState');
+
+if (lblDmmAlertUnit) lblDmmAlertUnit.innerText = dmmUnit;
+
+function setDmmAlertState(inBand) {
+  if (lblDmmAlertState) {
+    lblDmmAlertState.classList.toggle('in-band', inBand);
+    lblDmmAlertState.innerText = inBand ? t('dmm.alert_in_band') : '';
+  }
+  document.getElementById('dmmValue')?.classList.toggle('dmm-in-band', inBand);
+}
+
+function isDmmAlertActive(value) {
+  if (!chkDmmAlert || !chkDmmAlert.checked) {
+    setDmmAlertState(false);
+    return false;
+  }
+  const inBand = DmmAlert.inBand(value, DmmAlert.parseNumber(inpDmmAlertTarget.value), DmmAlert.parseNumber(inpDmmAlertTol.value));
+  setDmmAlertState(inBand);
+  return inBand;
+}
+
+chkDmmAlert?.addEventListener('change', () => {
+  if (!chkDmmAlert.checked) {
+    stopBuzzer();
+    setDmmAlertState(false);
+  } else if (DmmAlert.parseNumber(inpDmmAlertTarget.value) === null || DmmAlert.parseNumber(inpDmmAlertTol.value) === null) {
+    showToast(t('dmm.alert_hint'));
+  }
+});
+
 // DOM Elements for DMM
 const dmmValueEl = document.getElementById('dmmValue');
 const dmmSignEl = document.getElementById('dmmSign');
@@ -257,6 +293,7 @@ document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
 
     if (tagDmmSubtype) tagDmmSubtype.innerText = dmmSubtype;
     if (dmmUnitEl) dmmUnitEl.innerText = dmmUnit;
+    if (lblDmmAlertUnit) lblDmmAlertUnit.innerText = dmmUnit;
 
     resetDmmStats();
     stopBuzzer();
@@ -589,7 +626,7 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
   liveSerialPort = port;
-  if (!connected) deviceModeKnown = false;
+  if (!connected) { deviceModeKnown = false; stopBuzzer(); setDmmAlertState(false); }
   serialUiShown = true;
   if (connected) {
     if (tagDmmLive) {
@@ -769,12 +806,17 @@ function processLiveDmmLine(line) {
     status = 'OVERLOAD';
     numVal = 0;
     stopBuzzer();
+    setDmmAlertState(false);
   } else {
     numVal = parseFloat(rawVal) || 0;
     formatted = rawVal;
 
-    // Buzzer only in continuity mode
-    if (dmmMode === 'CONT') {
+    // Value alert: beep while the reading is inside target +/- tolerance, stop as soon as it leaves
+    if (isDmmAlertActive(DmmAlert.signedValue(sign, numVal))) {
+      playBuzzer(1200);
+      status = 'ALERT';
+    } else if (dmmMode === 'CONT') {
+      // Buzzer in continuity mode
       if (numVal < 50 && rawVal !== 'OPEN' && status !== 'OVERLOAD') {
         playBuzzer(2400);
         status = 'BUZZ';

@@ -708,7 +708,7 @@ input[type="range"] {
   color: var(--text-muted);
 }
 
-/* ========================================================
+/* =================================================
    3-IN-1 INSTRUMENT SWITCHER (HEADER)
    ======================================================== */
 .instrument-switch {
@@ -1220,3 +1220,30 @@ input[type="range"] {
 
 .scope-table thead th.ch1 { color: #facc15; }
 .scope-table thead th.ch2 { color: #00f2fe; }
+
+.dmm-alert-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.dmm-alert-row input[type="text"] {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: inherit;
+  padding: 3px 6px;
+}
+
+#lblDmmAlertState.in-band {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.dmm-in-band {
+  text-shadow: 0 0 14px #10b981;
+}

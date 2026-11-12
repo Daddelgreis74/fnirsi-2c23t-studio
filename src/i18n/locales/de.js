@@ -3,6 +3,10 @@
   else (root.I18nLocales = root.I18nLocales || {}).de = data;
 })(typeof self !== 'undefined' ? self : this, {
   "header.searching": "Suche Gerät...",
+  "dmm.alert": "Signal bei Zielwert",
+  "dmm.alert_target": "Ziel",
+  "dmm.alert_in_band": "● im Bereich",
+  "dmm.alert_hint": "Ziel und Toleranz müssen Zahlen sein",
   "header.hw_checking": "HW: Prüfe...",
   "header.drive_none": "Laufwerk: --",
   "header.drive": "Laufwerk: {drive}",
