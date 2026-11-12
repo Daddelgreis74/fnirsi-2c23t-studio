@@ -640,6 +640,7 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 
 function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
+  document.body.classList.toggle('live-link', !!connected);
   liveSerialPort = port;
   if (!connected) { deviceModeKnown = false; stopBuzzer(); setDmmAlertState(false); }
   serialUiShown = true;
@@ -1140,8 +1141,8 @@ function stepSetting(device, dir, simStep) {
   showSimSettings();
 }
 
-[['btnTbDec', 'TB', -1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
- ['btnTbInc', 'TB', 1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+[['btnTbDec', 'TB:', -1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+ ['btnTbInc', 'TB:', 1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
  ['btnCh1Dec', 'CH1:', -1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
  ['btnCh1Inc', 'CH1:', 1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
  ['btnCh2Dec', 'CH2:', -1, d => { ch2Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch2Scale, d); }],

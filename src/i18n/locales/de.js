@@ -2,6 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).de = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.gen_live_hint": "Das Gerät ist verbunden: Dieser Test ist nur eine Simulation. Starte den Generator am Gerät (GEN, dann RUN) und wechsle danach zum Oszilloskop: der Ausgang bleibt aktiv.",
   "scope.timebase_short": "Zeit/Div",
   "scope.gentest_short": "Generator-Test",
   "header.searching": "Suche Gerät...",

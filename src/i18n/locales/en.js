@@ -2,6 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).en = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.gen_live_hint": "The device is connected: this test is only a simulation. Start the generator on the device (GEN, then RUN), then switch to the scope: the output stays on.",
   "scope.timebase_short": "Time/div",
   "scope.gentest_short": "Generator test",
   "header.searching": "Searching for device...",

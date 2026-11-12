@@ -1350,3 +1350,8 @@ input[type="range"] {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+.gen-live-hint { display: none; font-size: 12px; color: var(--text-muted); margin: 0; }
+body.live-link .gen-live-hint { display: block; }
+body.live-link [data-subpane="gen"] .sig-presets,
+body.live-link [data-subpane="gen"] .slider-group { display: none; }

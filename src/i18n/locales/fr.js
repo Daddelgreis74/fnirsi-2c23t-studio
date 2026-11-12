@@ -2,6 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).fr = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.gen_live_hint": "L'appareil est connecté : ce test n'est qu'une simulation. Lance le générateur sur l'appareil (GEN puis RUN), puis repasse en oscilloscope : la sortie reste active.",
   "scope.timebase_short": "Base de temps",
   "scope.gentest_short": "Test générateur",
   "header.searching": "Recherche de l'appareil...",
