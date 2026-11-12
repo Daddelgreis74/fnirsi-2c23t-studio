@@ -1,5 +1,14 @@
 // FNIRSI 2C23T Studio - Core Application Logic
 
+// i18n: German is the source language; the saved choice, then the system locale, picks the start language.
+const LANGUAGES = ['de', 'fr', 'en'];
+const DATE_LOCALES = { de: 'de-DE', fr: 'fr-FR', en: 'en-GB' };
+const translator = I18nCore.createTranslator(
+  I18nLocales,
+  I18nCore.resolveLanguage(localStorage.getItem('language'), navigator.language, LANGUAGES)
+);
+const t = translator.t;
+
 let currentDeviceStatus = null;
 let scopeRunning = true;
 let liveScopeWave1 = null;
@@ -61,17 +70,48 @@ function switchTab(target) {
   if (target === 'dmm') renderDmmCanvas();
 }
 
+let deviceModeKnown = false;
+
+// Ask the device to follow the tab the user picked (firmware: MODE:SCOPE|DMM|GEN)
+const DEVICE_MODE_BY_TAB = { dmm: 'DMM', scope: 'SCOPE', generator: 'GEN' };
+let pendingMode = null;
+let pendingTimer = null;
+
+// The device answers every switch with $MODE; if that answer does not come, send the command again (twice at most).
+function sendModeCommand(mode, attempt) {
+  window.api.sendDmmCommand('MODE:' + mode);
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    if (pendingMode !== mode) return;
+    if (attempt >= 2) { pendingMode = null; return; }
+    sendModeCommand(mode, attempt + 1);
+  }, 1500);
+}
+
+function requestDeviceMode(tab) {
+  const mode = DEVICE_MODE_BY_TAB[tab];
+  if (mode && isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+    pendingMode = mode;
+    sendModeCommand(mode, 0);
+    deviceModeKnown = true; // from now on only the device's $MODE answer moves the tab, not stray data frames
+  }
+}
+function onTabClick(tab) {
+  switchTab(tab);
+  requestDeviceMode(tab);
+}
+
 navItems.forEach(item => {
-  item.addEventListener('click', () => switchTab(item.dataset.tab));
+  item.addEventListener('click', () => onTabClick(item.dataset.tab));
 });
 
 instrumentButtons.forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  btn.addEventListener('click', () => onTabClick(btn.dataset.tab));
 });
 
 // Refresh button
 btnRefresh.addEventListener('click', async () => {
-  showToast('Scanne USB-Laufwerke...');
+  showToast(t('toast.scanning'));
   const status = await window.api.getStatus();
   updateDeviceUI(status);
 });
@@ -80,7 +120,7 @@ btnOpenExplorer.addEventListener('click', async () => {
   if (currentDeviceStatus && currentDeviceStatus.driveLetter) {
     await window.api.openInExplorer(currentDeviceStatus.driveLetter);
   } else {
-    showToast('Kein 2C23T Laufwerk aktiv');
+    showToast(t('toast.no_drive'));
   }
 });
 
@@ -91,22 +131,22 @@ function updateDeviceUI(status) {
 
   if (!status.connected) {
     statusPill.classList.add('offline');
-    statusText.innerText = 'Kein 2C23T erkannt';
+    statusText.innerText = t('status.none');
     metaHw.innerText = 'HW: --';
-    metaDrive.innerText = 'Laufwerk: --';
+    metaDrive.innerText = t('header.drive_none');
     return;
   }
 
   if (status.mode === 'BOOTLOADER') {
     statusPill.classList.add('bootloader');
-    statusText.innerText = 'BootLoader Modus (Bereit)';
+    statusText.innerText = t('status.bootloader');
     metaHw.innerText = 'IAP Bootloader';
-    metaDrive.innerText = `Laufwerk: ${status.driveLetter}`;
+    metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
   } else {
     statusPill.classList.add('online');
-    statusText.innerText = status.firmwareVersion || 'Verbunden';
+    statusText.innerText = status.firmwareVersion || t('status.connected');
     metaHw.innerText = status.hwVersion;
-    metaDrive.innerText = `Laufwerk: ${status.driveLetter}`;
+    metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
 
     if (status.bootloaderCrc) {
       document.getElementById('valBootloaderCrc').innerText = status.bootloaderCrc;
@@ -174,6 +214,42 @@ function stopBuzzer() {
   }
 }
 
+// DMM value alert (checkbox + target + tolerance, see dmm_alert.js)
+const chkDmmAlert = document.getElementById('chkDmmAlert');
+const inpDmmAlertTarget = document.getElementById('inpDmmAlertTarget');
+const inpDmmAlertTol = document.getElementById('inpDmmAlertTol');
+const lblDmmAlertUnit = document.getElementById('lblDmmAlertUnit');
+const lblDmmAlertState = document.getElementById('lblDmmAlertState');
+
+if (lblDmmAlertUnit) lblDmmAlertUnit.innerText = dmmUnit;
+
+function setDmmAlertState(inBand) {
+  if (lblDmmAlertState) {
+    lblDmmAlertState.classList.toggle('in-band', inBand);
+    lblDmmAlertState.innerText = inBand ? t('dmm.alert_in_band') : '';
+  }
+  document.getElementById('dmmValue')?.classList.toggle('dmm-in-band', inBand);
+}
+
+function isDmmAlertActive(value) {
+  if (!chkDmmAlert || !chkDmmAlert.checked) {
+    setDmmAlertState(false);
+    return false;
+  }
+  const inBand = DmmAlert.inBand(value, DmmAlert.parseNumber(inpDmmAlertTarget.value), DmmAlert.parseNumber(inpDmmAlertTol.value));
+  setDmmAlertState(inBand);
+  return inBand;
+}
+
+chkDmmAlert?.addEventListener('change', () => {
+  if (!chkDmmAlert.checked) {
+    stopBuzzer();
+    setDmmAlertState(false);
+  } else if (DmmAlert.parseNumber(inpDmmAlertTarget.value) === null || DmmAlert.parseNumber(inpDmmAlertTol.value) === null) {
+    showToast(t('dmm.alert_hint'));
+  }
+});
+
 // DOM Elements for DMM
 const dmmValueEl = document.getElementById('dmmValue');
 const dmmSignEl = document.getElementById('dmmSign');
@@ -232,6 +308,7 @@ document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
 
     if (tagDmmSubtype) tagDmmSubtype.innerText = dmmSubtype;
     if (dmmUnitEl) dmmUnitEl.innerText = dmmUnit;
+    if (lblDmmAlertUnit) lblDmmAlertUnit.innerText = dmmUnit;
 
     resetDmmStats();
     stopBuzzer();
@@ -250,7 +327,7 @@ btnDmmHold?.addEventListener('click', () => {
   dmmHold = !dmmHold;
   btnDmmHold.classList.toggle('active', dmmHold);
   tagDmmHold.classList.toggle('active', dmmHold);
-  showToast(dmmHold ? 'HOLD: Messwert eingefroren' : 'HOLD: Deaktiviert');
+  showToast(t(dmmHold ? 'toast.hold_on' : 'toast.hold_off'));
 });
 
 btnDmmRel?.addEventListener('click', () => {
@@ -261,23 +338,27 @@ btnDmmRel?.addEventListener('click', () => {
   if (dmmRel) {
     const cur = parseFloat(dmmValueEl.innerText) || 0;
     dmmRelBaseline = cur;
-    showToast(`REL Δ: Nullpunkt auf ${cur} ${dmmUnit} gesetzt`);
+    showToast(t('toast.rel_on', { value: cur, unit: dmmUnit }));
   } else {
     dmmRelBaseline = 0;
-    showToast('REL Δ: Deaktiviert');
+    showToast(t('toast.rel_off'));
   }
 });
+
+function renderDmmRange() {
+  if (btnDmmRange) btnDmmRange.innerText = t(dmmAuto ? 'dmm.range_auto' : 'dmm.range_man');
+}
 
 btnDmmRange?.addEventListener('click', () => {
   dmmAuto = !dmmAuto;
   tagDmmAuto.classList.toggle('active', dmmAuto);
-  btnDmmRange.innerText = dmmAuto ? 'RANGE: AUTO' : 'RANGE: MAN';
+  renderDmmRange();
   btnDmmRange.classList.toggle('active', !dmmAuto);
 });
 
 btnDmmResetStats?.addEventListener('click', () => {
   resetDmmStats();
-  showToast('Statistiken zurückgesetzt');
+  showToast(t('toast.stats_reset'));
 });
 
 btnDmmBuzzer?.addEventListener('click', () => {
@@ -286,7 +367,7 @@ btnDmmBuzzer?.addEventListener('click', () => {
   tagDmmBuzzer.classList.toggle('active', dmmBuzzerEnabled);
   btnDmmBuzzer.innerText = dmmBuzzerEnabled ? 'BUZZER ON' : 'BUZZER OFF';
   if (!dmmBuzzerEnabled) stopBuzzer();
-  showToast(dmmBuzzerEnabled ? 'Durchgangs-Buzzer aktiv' : 'Buzzer stummgeschaltet');
+  showToast(t(dmmBuzzerEnabled ? 'toast.buzzer_on' : 'toast.buzzer_off'));
 });
 
 // Logger Controls
@@ -294,7 +375,7 @@ btnDmmRun?.addEventListener('click', () => {
   dmmLoggerRunning = !dmmLoggerRunning;
   btnDmmRun.innerText = dmmLoggerRunning ? 'LOGGER: STOP' : 'LOGGER: START';
   btnDmmRun.style.color = dmmLoggerRunning ? '' : '#10b981';
-  showToast(dmmLoggerRunning ? 'Messwert-Schreiber fortgesetzt' : 'Messwert-Schreiber pausiert');
+  showToast(t(dmmLoggerRunning ? 'toast.logger_resumed' : 'toast.logger_paused'));
 });
 
 btnDmmClearLogger?.addEventListener('click', () => {
@@ -304,7 +385,7 @@ btnDmmClearLogger?.addEventListener('click', () => {
   if (lblLogCount) lblLogCount.innerText = '0';
   resetDmmStats();
   renderDmmCanvas();
-  showToast('Datenlogger geleert');
+  showToast(t('toast.logger_cleared'));
 });
 
 selDmmRate?.addEventListener('change', (e) => {
@@ -320,7 +401,7 @@ selDmmWindow?.addEventListener('change', (e) => {
 // CSV Export
 btnDmmExportCsv?.addEventListener('click', async () => {
   if (dmmHistory.length === 0) {
-    showToast('Keine Messdaten zum Exportieren vorhanden');
+    showToast(t('toast.no_export'));
     return;
   }
 
@@ -332,7 +413,7 @@ btnDmmExportCsv?.addEventListener('click', async () => {
   const filename = `DMM_Messung_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
   const res = await window.api.saveCsv(filename, csv);
   if (res && res.success) {
-    showToast(`Messreihe gespeichert in: ${res.filePath}`);
+    showToast(t('toast.csv_saved', { path: res.filePath }));
   }
 });
 
@@ -346,6 +427,8 @@ const lblDmmHwMsg = document.getElementById("lblDmmHwMsg");
 let serialPort = null;
 let serialReader = null;
 let isLiveSerialConnected = false;
+let liveSerialPort = null;
+let serialUiShown = false;
 // Apply Reading to OLED UI, Stats & Logger
 function applyDmmReadingToUi(reading) {
   const now = new Date();
@@ -459,9 +542,9 @@ function renderDmmCanvas() {
     dmmCtx.font = "13px \"Cascadia Code\", Consolas, monospace";
     dmmCtx.textAlign = "center";
     if (isLiveSerialConnected) {
-      dmmCtx.fillText("Warte auf Messdaten vom 2C23T Multimeter...", w / 2, h / 2);
+      dmmCtx.fillText(t('canvas.waiting'), w / 2, h / 2);
     } else {
-      dmmCtx.fillText("Keine Live-Verbindung • Bitte oben auf \"LIVE USB VERBINDEN\" klicken", w / 2, h / 2);
+      dmmCtx.fillText(t('canvas.no_live'), w / 2, h / 2);
     }
     dmmCtx.textAlign = "left";
     return;
@@ -557,6 +640,10 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 
 function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
+  document.body.classList.toggle('live-link', !!connected);
+  liveSerialPort = port;
+  if (!connected) { deviceModeKnown = false; stopBuzzer(); setDmmAlertState(false); }
+  serialUiShown = true;
   if (connected) {
     if (tagDmmLive) {
       tagDmmLive.innerText = 'LIVE USB';
@@ -565,29 +652,29 @@ function updateSerialConnectionUI(connected, port) {
       tagDmmLive.style.background = 'rgba(16, 185, 129, 0.15)';
     }
     if (btnDmmSerialConnect) {
-      btnDmmSerialConnect.innerText = '● LIVE NEU VERBINDEN';
+      btnDmmSerialConnect.innerText = t('dmm.reconnect');
       btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
       btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
     if (boxDmmLiveStatus) {
       boxDmmLiveStatus.style.display = 'block';
-      boxDmmLiveStatus.innerText = `● LIVE TELEMETRIE AKTIV (${port || 'COM4'})`;
+      boxDmmLiveStatus.innerText = t('dmm.live_active', { port: port || 'COM4' });
     }
-    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Live-Messwerte werden empfangen.';
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_live');
   } else {
     if (tagDmmLive) {
-      tagDmmLive.innerText = 'WARTE AUF GERÄT';
+      tagDmmLive.innerText = t('dmm.live_waiting');
       tagDmmLive.style.borderColor = '#64748b';
       tagDmmLive.style.color = '#94a3b8';
       tagDmmLive.style.background = '';
     }
     if (btnDmmSerialConnect) {
-      btnDmmSerialConnect.innerText = '● LIVE USB VERBINDEN';
+      btnDmmSerialConnect.innerText = t('dmm.connect');
       btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
       btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
     if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
-    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Warte auf Verbindung... Gerät anstecken und auf DMM stellen.';
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_waiting');
   }
 }
 
@@ -735,12 +822,17 @@ function processLiveDmmLine(line) {
     status = 'OVERLOAD';
     numVal = 0;
     stopBuzzer();
+    setDmmAlertState(false);
   } else {
     numVal = parseFloat(rawVal) || 0;
     formatted = rawVal;
 
-    // Buzzer only in continuity mode
-    if (dmmMode === 'CONT') {
+    // Value alert: beep while the reading is inside target +/- tolerance, stop as soon as it leaves
+    if (isDmmAlertActive(DmmAlert.signedValue(sign, numVal))) {
+      playBuzzer(1200);
+      status = 'ALERT';
+    } else if (dmmMode === 'CONT') {
+      // Buzzer in continuity mode
       if (numVal < 50 && rawVal !== 'OPEN' && status !== 'OVERLOAD') {
         playBuzzer(2400);
         status = 'BUZZ';
@@ -794,6 +886,8 @@ function updateScopeMetadataUI() {
       statCh1Freq.innerText = `${liveScopeMeta.f1} Hz`;
     }
   }
+  const tbLive = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  if (tbLive && isLiveSerialConnected) setText(document.getElementById('lblTimebase'), ScopeMath.formatTime(tbLive));
   if (lblCh1Scale && liveScopeMeta.v1) lblCh1Scale.innerText = `${liveScopeMeta.v1}/div`;
 
   const statCh2Vpp = document.getElementById('statCh2Vpp');
@@ -822,29 +916,17 @@ function processLiveSerialLine(line) {
   if (!line || typeof line !== 'string') return;
   line = line.trim();
 
-  // Mode announcement
-  if (line.startsWith('$MODE,')) {
-    const parts = line.split(',');
-    if (parts.length >= 2) {
-      const mode = parts[1].trim().toUpperCase();
-      if (mode === 'SCOPE') {
-        switchTab('scope');
-      } else if (mode === 'DMM') {
-        switchTab('dmm');
-      } else if (mode === 'GEN') {
-        switchTab('generator');
-      }
-    }
-    return;
-  }
+  // Tab follows the device (see tab_sync.js): $MODE always, data frames only until the mode is known
+  const info = TabSync.lineInfo(line);
+  const tab = TabSync.tabForLine(info, deviceModeKnown);
+  if (info) deviceModeKnown = true;
+  if (info && info.announced && info.mode === pendingMode) { pendingMode = null; clearTimeout(pendingTimer); }
+  if (tab) switchTab(tab);
+  if (line.startsWith('$MODE,')) return;
 
   // DMM telemetry
   if (line.startsWith('$DMM,')) {
     processLiveDmmLine(line);
-    const activeTab = document.querySelector('.nav-item.active');
-    if (activeTab && activeTab.dataset.tab === 'scope') {
-      switchTab('dmm');
-    }
     return;
   }
 
@@ -864,11 +946,6 @@ function processLiveSerialLine(line) {
       liveScopeMeta.ch2En = parts[10] === '1';
 
       updateScopeMetadataUI();
-
-      const activeTab = document.querySelector('.nav-item.active');
-      if (activeTab && activeTab.dataset.tab === 'dmm') {
-        switchTab('scope');
-      }
     }
     return;
   }
@@ -891,11 +968,6 @@ function processLiveSerialLine(line) {
         liveScopeWave2 = samples;
       }
       lastScopeWaveTime = Date.now();
-
-      const activeTab = document.querySelector('.nav-item.active');
-      if (activeTab && activeTab.dataset.tab === 'dmm') {
-        switchTab('scope');
-      }
     }
     return;
   }
@@ -989,30 +1061,30 @@ inputDmmSerialCmd?.addEventListener('keydown', (e) => {
 btnDmmCopyRawLog?.addEventListener('click', () => {
   const text = rawSerialLogLines.join('\r\n');
   navigator.clipboard.writeText(text);
-  showToast('Serial-Log in Zwischenablage kopiert');
+  showToast(t('toast.serial_copied'));
 });
 
 btnDmmClearRawLog?.addEventListener('click', () => {
   rawSerialLogLines = [];
   if (txtDmmSerialLog) txtDmmSerialLog.innerHTML = '';
-  showToast('Serial-Log geleert');
+  showToast(t('toast.serial_cleared'));
 });
 
 btnDmmSaveRawLog?.addEventListener('click', async () => {
   if (rawSerialLogLines.length === 0) {
-    showToast('Keine Log-Einträge vorhanden');
+    showToast(t('toast.serial_empty'));
     return;
   }
   const filename = `DMM_Serial_Log_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
   const content = rawSerialLogLines.join('\r\n');
   const res = await window.api.saveCsv(filename, content);
   if (res && res.success) {
-    showToast(`Serial-Log gespeichert: ${res.filePath}`);
+    showToast(t('toast.serial_saved', { path: res.filePath }));
   }
 });
 
 btnDmmSerialConnect?.addEventListener('click', async () => {
-  showToast('Suche & verbinde 2C23T COM-Port...');
+  showToast(t('toast.serial_connecting'));
   if (window.api && window.api.reconnectSerial) {
     await window.api.reconnectSerial();
   }
@@ -1049,22 +1121,45 @@ if (btnScopeAuto) {
   });
 }
 
-document.querySelectorAll('[data-timebase]').forEach(btn => {
+// Timebase and volts/div: on the device when linked (the label then follows its $SCOPE frames), else the simulation
+const TIMEBASE_STEPS_MS = [0.1, 0.2, 0.5, 1, 2, 5, 10];
+const SCALE_STEPS_V = [0.1, 0.2, 0.5, 1, 2, 5];
+const lblTimebase = document.getElementById('lblTimebase');
+
+function showSimSettings() {
+  setText(lblTimebase, ScopeMath.formatTime(timebaseVal * 1e6));
+  setText(document.getElementById('lblCh1Scale'), `${ch1Scale} V/div`);
+  setText(document.getElementById('lblCh2Scale'), `${ch2Scale} V/div`);
+}
+
+function stepSetting(device, dir, simStep) {
+  if (isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+    window.api.sendDmmCommand(`SCOPE:${device}${dir > 0 ? '+' : '-'}\n`);
+    return;
+  }
+  simStep(dir);
+  showSimSettings();
+}
+
+[['btnTbDec', 'TB:', -1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+ ['btnTbInc', 'TB:', 1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+ ['btnCh1Dec', 'CH1:', -1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
+ ['btnCh1Inc', 'CH1:', 1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
+ ['btnCh2Dec', 'CH2:', -1, d => { ch2Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch2Scale, d); }],
+ ['btnCh2Inc', 'CH2:', 1, d => { ch2Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch2Scale, d); }],
+].forEach(([id, device, dir, simStep]) => {
+  document.getElementById(id).addEventListener('click', () => stepSetting(device, dir, simStep));
+});
+
+showSimSettings();
+
+// Sub-panels under the screen (captures, bus decoding, generator test): one open at a time, click again to close
+document.querySelectorAll('[data-subtab]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-timebase]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    timebaseVal = parseFloat(btn.dataset.timebase);
+    const open = !btn.classList.contains('active');
+    document.querySelectorAll('[data-subtab]').forEach(b => b.classList.toggle('active', open && b === btn));
+    document.querySelectorAll('[data-subpane]').forEach(p => { p.hidden = !(open && p.dataset.subpane === btn.dataset.subtab); });
   });
-});
-
-document.getElementById('rngCh1Scale').addEventListener('input', (e) => {
-  ch1Scale = parseFloat(e.target.value);
-  document.getElementById('lblCh1Scale').innerText = `${ch1Scale.toFixed(1)} V/div`;
-});
-
-document.getElementById('rngCh2Scale').addEventListener('input', (e) => {
-  ch2Scale = parseFloat(e.target.value);
-  document.getElementById('lblCh2Scale').innerText = `${ch2Scale.toFixed(1)} V/div`;
 });
 
 document.querySelectorAll('.sig-presets button').forEach(btn => {
@@ -1079,6 +1174,283 @@ document.getElementById('rngGenFreq').addEventListener('input', (e) => {
   genFreq = parseInt(e.target.value);
   document.getElementById('lblGenFreq').innerText = genFreq >= 1000 ? `${(genFreq/1000).toFixed(1)} kHz` : `${genFreq} Hz`;
 });
+
+// Cursors (positions in divisions: x from the left edge, y from the channel centre) and measurements
+const chkCursors = document.getElementById('chkCursors');
+const selCursorCh = document.getElementById('selCursorCh');
+const scopeCursors = { x1: 2, x2: 7, y1: 2, y2: -2 };
+const scopeGeometry = { divX: 80, divY: 60, centerY: 240 };
+let draggedCursor = null;
+
+function setText(el, text) {
+  if (el && el.textContent !== text) el.textContent = text;
+}
+
+function scopeMouse(e) {
+  const rect = scopeCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (scopeCanvas.width / rect.width),
+    y: (e.clientY - rect.top) * (scopeCanvas.height / rect.height)
+  };
+}
+
+function cursorAt(pos) {
+  const { divX, divY, centerY } = scopeGeometry;
+  const hits = [
+    ['x1', Math.abs(pos.x - scopeCursors.x1 * divX)],
+    ['x2', Math.abs(pos.x - scopeCursors.x2 * divX)],
+    ['y1', Math.abs(pos.y - (centerY - scopeCursors.y1 * divY))],
+    ['y2', Math.abs(pos.y - (centerY - scopeCursors.y2 * divY))]
+  ].filter(([, d]) => d <= 10);
+  hits.sort((a, b) => a[1] - b[1]);
+  return hits.length ? hits[0][0] : null;
+}
+
+scopeCanvas.addEventListener('mousedown', (e) => {
+  if (chkCursors.checked) draggedCursor = cursorAt(scopeMouse(e));
+});
+scopeCanvas.addEventListener('mousemove', (e) => {
+  if (!chkCursors.checked) return;
+  const pos = scopeMouse(e);
+  if (draggedCursor) {
+    const { divX, divY, centerY } = scopeGeometry;
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    if (draggedCursor[0] === 'x') scopeCursors[draggedCursor] = clamp(pos.x / divX, 0, ScopeMath.X_DIVS);
+    else scopeCursors[draggedCursor] = clamp((centerY - pos.y) / divY, -ScopeMath.Y_DIVS / 2, ScopeMath.Y_DIVS / 2);
+  } else {
+    const hit = cursorAt(pos);
+    scopeCanvas.style.cursor = hit ? (hit[0] === 'x' ? 'ew-resize' : 'ns-resize') : '';
+  }
+});
+window.addEventListener('mouseup', () => { draggedCursor = null; });
+
+function drawCursors(centerY, divX, divY, width, height) {
+  scopeGeometry.divX = divX;
+  scopeGeometry.divY = divY;
+  scopeGeometry.centerY = centerY;
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#f472b6';
+  scopeCtx.fillStyle = '#f472b6';
+  scopeCtx.lineWidth = 1;
+  scopeCtx.setLineDash([6, 4]);
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.beginPath();
+  for (const [key, label] of [['x1', 'X1'], ['x2', 'X2']]) {
+    const x = scopeCursors[key] * divX;
+    scopeCtx.moveTo(x, 0);
+    scopeCtx.lineTo(x, height);
+    scopeCtx.fillText(label, x + 4, 12);
+  }
+  for (const [key, label] of [['y1', 'Y1'], ['y2', 'Y2']]) {
+    const y = centerY - scopeCursors[key] * divY;
+    scopeCtx.moveTo(0, y);
+    scopeCtx.lineTo(width, y);
+    scopeCtx.fillText(label, width - 22, y - 4);
+  }
+  scopeCtx.stroke();
+  scopeCtx.restore();
+}
+
+// Capture history: snapshots of the streamed waveforms, shown as a reference overlay or exported to CSV
+const captures = ScopeCaptures.createStore(20);
+const selCaptures = document.getElementById('selCaptures');
+const chkCaptureOverlay = document.getElementById('chkCaptureOverlay');
+
+function selectedCapture() {
+  return selCaptures.value ? captures.get(Number(selCaptures.value)) : undefined;
+}
+
+function refreshCaptureList(selectId) {
+  selCaptures.innerHTML = '';
+  for (const c of captures.list()) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = ScopeCaptures.captureLabel(c);
+    selCaptures.appendChild(opt);
+  }
+  const last = captures.list().slice(-1)[0];
+  if (selectId !== undefined) selCaptures.value = selectId;
+  else if (last) selCaptures.value = last.id;
+}
+
+function takeCapture() {
+  const snapshot = {
+    tb: liveScopeMeta.tb, v1: liveScopeMeta.v1, v2: liveScopeMeta.v2,
+    ch1En: liveScopeMeta.ch1En, ch2En: liveScopeMeta.ch2En,
+    wave1: liveScopeWave1, wave2: liveScopeWave2, takenAt: new Date()
+  };
+  if (Date.now() - lastScopeWaveTime >= 2500 || !ScopeCaptures.isCapturable(snapshot)) {
+    showToast(t('toast.no_capture'));
+    return;
+  }
+  const c = captures.add(snapshot);
+  refreshCaptureList(c.id);
+  showToast(t('toast.capture_taken', { id: c.id }));
+}
+
+document.getElementById('btnCapture').addEventListener('click', takeCapture);
+document.getElementById('btnCaptureDelete').addEventListener('click', () => {
+  const c = selectedCapture();
+  if (!c) return;
+  captures.remove(c.id);
+  refreshCaptureList();
+});
+document.getElementById('btnCaptureCsv').addEventListener('click', async () => {
+  const c = selectedCapture();
+  if (!c) return;
+  const res = await window.api.saveCsv(`Oszilloskop_Aufnahme_${c.id}.csv`, ScopeCaptures.captureToCsv(c));
+  if (res && res.success) showToast(t('toast.csv_saved', { path: res.filePath }));
+});
+
+// Reference trace of the selected capture, drawn in white over the live traces (scaled to the current V/div)
+function drawReference(c, ch1CenterY, ch2CenterY, width, divY) {
+  scopeCtx.save();
+  scopeCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  scopeCtx.lineWidth = 1.5;
+  scopeCtx.setLineDash([5, 4]);
+  for (const [wave, enabled, capVdiv, curVdiv, centerY] of [
+    [c.wave1, c.ch1En, c.v1, liveScopeMeta.v1, ch1CenterY], [c.wave2, c.ch2En, c.v2, liveScopeMeta.v2, ch2CenterY]
+  ]) {
+    const capMv = ScopeMath.parseVdivMv(capVdiv);
+    const curMv = ScopeMath.parseVdivMv(curVdiv) || capMv;
+    if (!wave || !enabled || !capMv) continue;
+    scopeCtx.beginPath();
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * width;
+      const y = centerY - (ScopeMath.rawToMv(wave[i], capMv) / curMv) * divY;
+      if (i === 0) scopeCtx.moveTo(x, y);
+      else scopeCtx.lineTo(x, y);
+    }
+    scopeCtx.stroke();
+  }
+  scopeCtx.setLineDash([]);
+  scopeCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.fillText(t('scope.capture_ref', { label: ScopeCaptures.captureLabel(c) }), 14, 14);
+  scopeCtx.restore();
+}
+
+// Maths trace and XY mode
+const chkXY = document.getElementById('chkXY');
+const selMath = document.getElementById('selMath');
+
+function drawXY(points, centerX, centerY, divX, divY) {
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#4ade80';
+  scopeCtx.lineWidth = 2;
+  scopeCtx.shadowColor = '#4ade80';
+  scopeCtx.shadowBlur = 0;
+  scopeCtx.beginPath();
+  points.forEach((p, i) => {
+    const x = centerX + p.x * divX;
+    const y = centerY - p.y * divY;
+    if (i === 0) scopeCtx.moveTo(x, y);
+    else scopeCtx.lineTo(x, y);
+  });
+  scopeCtx.stroke();
+  scopeCtx.restore();
+}
+
+// Sum / difference of both channels, drawn around the screen centre on the CH1 scale
+function drawMath(op, centerY, width, divY, height) {
+  const vdiv1 = ScopeMath.parseVdivMv(liveScopeMeta.v1);
+  const mv = liveScopeMeta.ch1En && liveScopeMeta.ch2En
+    ? ScopeMath.mathTrace(op, liveScopeWave1, liveScopeWave2, vdiv1, ScopeMath.parseVdivMv(liveScopeMeta.v2))
+    : null;
+  if (!mv) return;
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#c084fc';
+  scopeCtx.lineWidth = 2;
+  scopeCtx.beginPath();
+  mv.forEach((value, i) => {
+    const x = (i / (mv.length - 1)) * width;
+    const y = centerY - (value / vdiv1) * divY;
+    if (i === 0) scopeCtx.moveTo(x, y);
+    else scopeCtx.lineTo(x, y);
+  });
+  scopeCtx.stroke();
+  scopeCtx.fillStyle = '#c084fc';
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.fillText(t('scope.math_label', { op: op === 'add' ? 'CH1+CH2' : 'CH1-CH2', vdiv: liveScopeMeta.v1 }), 14, height - 28);
+  scopeCtx.restore();
+}
+
+chkXY.addEventListener('change', () => {
+  if (chkXY.checked && !(liveScopeMeta.ch1En && liveScopeMeta.ch2En)) showToast(t('scope.xy_need_both'));
+});
+
+// Bus decoding of the current frame (see bus_decode.js). The last decoded text stays visible for 2 s
+// because a 180-sample frame often holds nothing decodable while the bus is idle between frames.
+const selBusProto = document.getElementById('selBusProto');
+const selBusBaud = document.getElementById('selBusBaud');
+const busOutput = document.getElementById('busOutput');
+let busLastText = '';
+let busLastAt = 0;
+
+function decodeBusFrame(proto) {
+  const tbNs = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  if (proto === 'uart') {
+    if (!liveScopeMeta.ch1En || !tbNs) return { text: '' };
+    let baud = selBusBaud.value === 'auto' ? BusDecode.estimateBaud(liveScopeWave1, tbNs) : Number(selBusBaud.value);
+    if (!baud) return { note: t('scope.bus_no_baud') };
+    const r = BusDecode.decodeUart(liveScopeWave1, { baud, tbNs });
+    if (r.error === 'too_fast') return { note: t('scope.bus_too_fast') };
+    return { text: BusDecode.formatBytes(r.bytes), prefix: t('scope.bus_baud_found', { baud }) };
+  }
+  if (!liveScopeMeta.ch1En || !liveScopeMeta.ch2En) return { note: t('scope.bus_need_both') };
+  if (proto === 'i2c') return { text: BusDecode.formatI2c(BusDecode.decodeI2c(liveScopeWave1, liveScopeWave2)) };
+  return { text: BusDecode.formatBytes(BusDecode.decodeSpi(liveScopeWave1, liveScopeWave2)) };
+}
+
+function updateBusDecode(live) {
+  const proto = selBusProto.value;
+  selBusBaud.disabled = proto !== 'uart';
+  if (!proto) { setText(busOutput, ''); busLastText = ''; return; }
+  if (!live) { setText(busOutput, t('scope.bus_no_live')); return; }
+  const r = decodeBusFrame(proto);
+  if (r.note) { setText(busOutput, r.note); return; }
+  const now = Date.now();
+  if (r.text) {
+    busLastText = r.prefix ? `${r.prefix}\n${r.text}` : r.text;
+    busLastAt = now;
+  } else if (now - busLastAt > 2000) {
+    busLastText = '';
+  }
+  setText(busOutput, busLastText || t('scope.bus_nothing'));
+}
+
+function setCells(prefix, values) {
+  for (const [key, text] of Object.entries(values)) setText(document.getElementById(prefix + key), text);
+}
+
+function updateScopeReadouts(live) {
+  const vdiv = { 1: ScopeMath.parseVdivMv(liveScopeMeta.v1), 2: ScopeMath.parseVdivMv(liveScopeMeta.v2) };
+  const tbNs = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  const none = '--';
+
+  // Cursor table: time from the left edge of the screen, voltage from the zero line of the chosen channel
+  const cursorVdiv = vdiv[selCursorCh.value];
+  if (chkCursors.checked && live && cursorVdiv && tbNs) {
+    const r = ScopeMath.cursorReadout(scopeCursors, cursorVdiv, tbNs);
+    setCells('cur', {
+      X1: ScopeMath.formatTime(scopeCursors.x1 * tbNs), X2: ScopeMath.formatTime(scopeCursors.x2 * tbNs),
+      Dx: ScopeMath.formatTime(r.dtNs), Y1: ScopeMath.formatVoltage(r.v1Mv), Y2: ScopeMath.formatVoltage(r.v2Mv),
+      Dy: ScopeMath.formatVoltage(r.dvMv), Freq: ScopeMath.formatFreq(r.freqHz)
+    });
+  } else {
+    setCells('cur', { X1: none, X2: none, Dx: none, Y1: none, Y2: none, Dy: none, Freq: none });
+  }
+
+  // Measurement table, one column per channel
+  for (const [n, wave, enabled] of [[1, liveScopeWave1, liveScopeMeta.ch1En], [2, liveScopeWave2, liveScopeMeta.ch2En]]) {
+    const m = live && enabled ? ScopeMath.measureWave(wave, vdiv[n], tbNs) : null;
+    setCells(`m${n}_`, m ? {
+      vpp: ScopeMath.formatVoltage(m.vpp), vmax: ScopeMath.formatVoltage(m.vmax), vmin: ScopeMath.formatVoltage(m.vmin),
+      vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms), freq: ScopeMath.formatFreq(m.freqHz, freqUnit),
+      duty: m.dutyPct === null ? none : `${m.dutyPct.toFixed(0)} %`, rise: m.riseNs === null ? none : ScopeMath.formatTime(m.riseNs)
+    } : { vpp: none, vmax: none, vmin: none, vmean: none, vrms: none, freq: none, duty: none, rise: none });
+  }
+}
 
 function renderScope() {
   const width = scopeCanvas.width;
@@ -1128,10 +1500,13 @@ function renderScope() {
   scopeCtx.font = '11px Cascadia Code, monospace';
   if (hasHardwareWave) {
     scopeCtx.fillStyle = '#10b981';
-    scopeCtx.fillText(`● HARDWARE LIVE TELEMETRIE [${liveScopeMeta.tb} | CH1:${liveScopeMeta.v1} | CH2:${liveScopeMeta.v2}]`, 14, height - 12);
+    scopeCtx.fillText(t('scope.live_badge', { tb: liveScopeMeta.tb, v1: liveScopeMeta.v1, v2: liveScopeMeta.v2 }), 14, height - 12);
   } else {
     scopeCtx.fillStyle = '#64748b';
-    scopeCtx.fillText('○ SIMULATOR MODUS (Warte auf USB Telemetrie...)', 14, height - 12);
+    scopeCtx.fillText(t('scope.sim_badge'), 14, height - 12);
+    if (isLiveSerialConnected) {
+      scopeCtx.fillText(t('scope.sim_hint'), 14, height - 28);
+    }
   }
 
   const showCh1 = document.getElementById('chkCh1').checked;
@@ -1160,20 +1535,26 @@ function renderScope() {
     scopeCtx.fill();
   }
 
-  if (hasHardwareWave) {
+  const xyPoints = chkXY.checked && hasHardwareWave && liveScopeMeta.ch1En && liveScopeMeta.ch2En
+    ? ScopeMath.xyPoints(liveScopeWave1, liveScopeWave2, ScopeMath.parseVdivMv(liveScopeMeta.v1), ScopeMath.parseVdivMv(liveScopeMeta.v2))
+    : null;
+
+  if (xyPoints) {
+    drawXY(xyPoints, width / 2, centerY, divX, divY);
+  } else if (hasHardwareWave) {
     // REAL HARDWARE CH1 WAVE (Gelb, Hardware-Kanal 1 oben)
     if (showCh1 && liveScopeWave1 && liveScopeWave1.length > 1) {
       scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
       scopeCtx.shadowColor = '#facc15';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
       const n = liveScopeWave1.length;
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave1[i];
         const delta = raw - 128;
-        const y = ch1CenterY - (delta / 32) * divY;
+        const y = ch1CenterY - (delta / ScopeMath.COUNTS_PER_DIV) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1186,14 +1567,14 @@ function renderScope() {
       scopeCtx.strokeStyle = '#00f2fe';
       scopeCtx.lineWidth = 2.2;
       scopeCtx.shadowColor = '#00f2fe';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
       const n = liveScopeWave2.length;
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * width;
         const raw = liveScopeWave2[i];
         const delta = raw - 128;
-        const y = ch2CenterY - (delta / 32) * divY;
+        const y = ch2CenterY - (delta / ScopeMath.COUNTS_PER_DIV) * divY;
         if (i === 0) scopeCtx.moveTo(x, y);
         else scopeCtx.lineTo(x, y);
       }
@@ -1210,7 +1591,7 @@ function renderScope() {
       scopeCtx.strokeStyle = '#facc15';
       scopeCtx.lineWidth = 2.5;
       scopeCtx.shadowColor = '#facc15';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
 
       for (let x = 0; x < width; x++) {
@@ -1236,7 +1617,7 @@ function renderScope() {
       scopeCtx.strokeStyle = '#00f2fe';
       scopeCtx.lineWidth = 2.2;
       scopeCtx.shadowColor = '#00f2fe';
-      scopeCtx.shadowBlur = 8;
+      scopeCtx.shadowBlur = 0;
       scopeCtx.beginPath();
 
       for (let x = 0; x < width; x++) {
@@ -1257,6 +1638,15 @@ function renderScope() {
     document.getElementById('statCh1Vrms').innerText = `${vrms1} Vrms`;
     document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
   }
+
+  if (!xyPoints && hasHardwareWave && selMath.value) drawMath(selMath.value, centerY, width, divY, height);
+  const refCapture = chkCaptureOverlay.checked ? selectedCapture() : undefined;
+  if (refCapture) drawReference(refCapture, ch1CenterY, ch2CenterY, width, divY);
+  if (chkCursors.checked) {
+    drawCursors(selCursorCh.value === '2' ? ch2CenterY : ch1CenterY, divX, divY, width, height);
+  }
+  updateScopeReadouts(hasHardwareWave);
+  updateBusDecode(hasHardwareWave);
 
   requestAnimationFrame(renderScope);
 }
@@ -1284,7 +1674,7 @@ async function loadScreenshots() {
     list.forEach(item => {
       const card = document.createElement('div');
       card.className = 'gallery-card';
-      const dateStr = new Date(item.mtime).toLocaleString('de-DE');
+      const dateStr = new Date(item.mtime).toLocaleString(DATE_LOCALES[translator.lang]);
       card.innerHTML = `
         <img class="gallery-thumb" src="${item.previewBase64}" alt="${item.filename}">
         <div class="gallery-card-meta">
@@ -1321,7 +1711,7 @@ function showScreenshotPreview(item) {
 
 document.getElementById('btnSyncScreenshots').addEventListener('click', () => {
   loadScreenshots();
-  showToast('Screenshots synchronisiert!');
+  showToast(t('toast.synced'));
 });
 
 document.getElementById('btnOpenScreenshotFolder').addEventListener('click', () => {
@@ -1435,10 +1825,14 @@ document.querySelectorAll('.btn-preset').forEach(btn => {
   });
 });
 
+function renderWavePointsLabels() {
+  document.getElementById('lblWavePoints').innerText = t('gen.points', { n: wavePoints });
+  document.getElementById('lblPointsCount').innerText = t('gen.points', { n: wavePoints });
+}
+
 document.getElementById('rngWavePoints').addEventListener('input', (e) => {
   wavePoints = parseInt(e.target.value);
-  document.getElementById('lblWavePoints').innerText = `${wavePoints} Punkte`;
-  document.getElementById('lblPointsCount').innerText = `${wavePoints} Punkte`;
+  renderWavePointsLabels();
   initWavePreset(activeWavePreset);
 });
 
@@ -1477,8 +1871,107 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
   const name = document.getElementById('txtWaveName').value.trim() || 'WAVE1';
   try {
     const res = await window.api.saveWaveformCsv(name, customPoints);
-    showToast(`Wellenform ${res.name} erfolgreich auf 2C23T gespeichert!`);
+    showToast(t('toast.wave_saved', { name: res.name }));
   } catch (err) {
-    alert(err.message || 'Fehler beim Speichern');
+    alert(err.message || t('error.save'));
   }
+});
+
+// ==========================================
+// LANGUAGE SELECTOR
+// ==========================================
+const selLanguage = document.getElementById('selLanguage');
+
+// Re-renders every text that JS wrote itself (state-dependent), after the static data-i18n texts.
+function refreshDynamicTexts() {
+  if (currentDeviceStatus) updateDeviceUI(currentDeviceStatus);
+  if (serialUiShown) updateSerialConnectionUI(isLiveSerialConnected, liveSerialPort);
+  renderDmmRange();
+  renderWavePointsLabels();
+  renderDmmCanvas();
+  if (document.getElementById('tab-gallery').classList.contains('active')) loadScreenshots();
+}
+
+function applyLanguage(lang) {
+  translator.setLang(lang);
+  localStorage.setItem('language', translator.lang);
+  document.documentElement.lang = translator.lang;
+  selLanguage.value = translator.lang;
+  window.api.setLanguage(translator.lang);
+  I18nCore.applyTranslations(document, t);
+  refreshDynamicTexts();
+}
+
+selLanguage.addEventListener('change', () => applyLanguage(selLanguage.value));
+applyLanguage(translator.lang);
+
+// ==========================================
+// THEME AND KEYBOARD SHORTCUTS (see shortcuts.js)
+// ==========================================
+function applyTheme(theme) {
+  theme = Shortcuts.normalizeTheme(theme);
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('theme', theme);
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+}
+
+applyTheme(localStorage.getItem('theme'));
+document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+
+// Frequency unit, cycled by the button next to the measurement row. Hertz
+// first: a multiple truncates digits the measurement actually carries.
+const FREQ_UNITS = ['Hz', 'kHz', 'MHz'];
+let freqUnit = FREQ_UNITS.includes(localStorage.getItem('freqUnit'))
+  ? localStorage.getItem('freqUnit')
+  : 'Hz';
+
+function applyFreqUnit(unit) {
+  freqUnit = FREQ_UNITS.includes(unit) ? unit : 'Hz';
+  localStorage.setItem('freqUnit', freqUnit);
+  const btn = document.getElementById('btnFreqUnit');
+  if (btn) btn.innerText = freqUnit;
+  updateScopeReadouts();
+}
+
+function cycleFreqUnit() {
+  applyFreqUnit(FREQ_UNITS[(FREQ_UNITS.indexOf(freqUnit) + 1) % FREQ_UNITS.length]);
+}
+
+const btnFreqUnit = document.getElementById('btnFreqUnit');
+if (btnFreqUnit) {
+  btnFreqUnit.innerText = freqUnit;
+  btnFreqUnit.addEventListener('click', cycleFreqUnit);
+}
+
+const SHORTCUT_ACTIONS = {
+  'tab-dmm': () => onTabClick('dmm'),
+  'tab-scope': () => onTabClick('scope'),
+  'tab-generator': () => onTabClick('generator'),
+  'scope-run': () => document.getElementById('btnScopeRun').click(),
+  'scope-auto': () => document.getElementById('btnScopeAuto')?.click(),
+  'scope-cursors': () => chkCursors.click(),
+  'scope-capture': takeCapture,
+  'dmm-hold': () => btnDmmHold?.click(),
+  'dmm-rel': () => document.getElementById('btnDmmRel')?.click(),
+  theme: toggleTheme,
+  help: () => showToast(t('toast.shortcuts'), 6000)
+};
+
+document.addEventListener('keydown', (e) => {
+  const el = e.target;
+  // Space activates a focused button or checkbox natively: leave it alone there
+  const isControl = el && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName);
+  const isTextField = el && (/^(TEXTAREA|SELECT)$/.test(el.tagName) || (el.tagName === 'INPUT' && !/^(checkbox|range|button)$/.test(el.type)));
+  const typing = el && (isTextField || el.isContentEditable || (e.key === ' ' && isControl));
+  const activeTab = document.querySelector('.nav-item.active');
+  const action = Shortcuts.actionForKey({
+    key: e.key, tab: activeTab ? activeTab.dataset.tab : '', typing: !!typing,
+    ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey
+  });
+  if (!action) return;
+  e.preventDefault();
+  SHORTCUT_ACTIONS[action]();
 });

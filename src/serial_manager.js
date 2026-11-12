@@ -4,6 +4,7 @@
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { t } = require('./i18n/main');
 
 class SerialManager {
   constructor() {
@@ -49,6 +50,19 @@ class SerialManager {
     }, 2500);
   }
 
+  // Scope frames arrive about 15 times a second and are long: log at most one of each kind per second
+  // so the log file and the serial monitor stay light (the lines are still processed).
+  shouldLogRx(line) {
+    const m = /^\$(SCOPE|WAVE),?(\d?)/.exec(line);
+    if (!m) return true;
+    const key = m[1] + m[2];
+    const now = Date.now();
+    this.lastRxLog = this.lastRxLog || {};
+    if (now - (this.lastRxLog[key] || 0) < 1000) return false;
+    this.lastRxLog[key] = now;
+    return true;
+  }
+
   emitLog(type, text) {
     const time = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
     this.logToFile(`${type.toUpperCase()}: ${text}`);
@@ -71,7 +85,7 @@ class SerialManager {
         }
       }
     } catch (e) {
-      this.emitLog('error', `Port-Erkennungsfehler: ${e.message}`);
+      this.emitLog('error', t('serial.detect_error', { message: e.message }));
     }
   }
 
@@ -154,7 +168,7 @@ Add-Type -TypeDefinition $code
 `;
 
     try {
-      this.emitLog('info', `Initialisiere Hardware-Port ${port} (115200 Baud)...`);
+      this.emitLog('info', t('serial.init_port', { port }));
 
       this.worker = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], {
         windowsHide: true,
@@ -174,13 +188,13 @@ Add-Type -TypeDefinition $code
 
           if (trimmed.startsWith('[CONNECTED]:')) {
             const connectedPort = trimmed.substring(12);
-            this.emitLog('info', `Verbunden mit ${connectedPort}`);
+            this.emitLog('info', t('serial.connected', { port: connectedPort }));
             if (this.onStatusCallback) {
               this.onStatusCallback({ connected: true, port: connectedPort });
             }
           } else if (trimmed.startsWith('[RX]:')) {
             const rxLine = trimmed.substring(5);
-            this.emitLog('rx', rxLine);
+            if (this.shouldLogRx(rxLine)) this.emitLog('rx', rxLine);
             if (this.onLineCallback) {
               this.onLineCallback(rxLine);
             }
@@ -188,13 +202,13 @@ Add-Type -TypeDefinition $code
             const txCmd = trimmed.substring(5);
             this.emitLog('tx', txCmd);
           } else if (trimmed.startsWith('[ERR_OPEN]:')) {
-            this.emitLog('error', `Fehler beim Öffnen von ${port}: ${trimmed.substring(11)}`);
+            this.emitLog('error', t('serial.open_error', { port, message: trimmed.substring(11) }));
           } else if (trimmed.startsWith('[ERR_TX]:')) {
-            this.emitLog('error', `Sende-Fehler: ${trimmed.substring(9)}`);
+            this.emitLog('error', t('serial.send_error', { message: trimmed.substring(9) }));
           } else if (trimmed.startsWith('[ERR_RX]:')) {
-            this.emitLog('error', `Empfangs-Fehler: ${trimmed.substring(9)}`);
+            this.emitLog('error', t('serial.receive_error', { message: trimmed.substring(9) }));
           } else if (trimmed === '[DISCONNECTED]') {
-            this.emitLog('info', `Verbindung getrennt.`);
+            this.emitLog('info', t('serial.disconnected'));
             if (this.onStatusCallback) {
               this.onStatusCallback({ connected: false, port: null });
             }
@@ -217,14 +231,14 @@ Add-Type -TypeDefinition $code
       });
 
       this.worker.on('error', (err) => {
-        this.emitLog('error', `Worker Prozessfehler: ${err.message}`);
+        this.emitLog('error', t('serial.worker_error', { message: err.message }));
         this.worker = null;
         if (this.onStatusCallback) {
           this.onStatusCallback({ connected: false, port: null });
         }
       });
     } catch (err) {
-      this.emitLog('error', `Worker-Start fehlgeschlagen: ${err.message}`);
+      this.emitLog('error', t('serial.worker_start_failed', { message: err.message }));
       this.worker = null;
     }
   }
@@ -236,11 +250,11 @@ Add-Type -TypeDefinition $code
         this.worker.stdin.write(cleanCmd + '\n');
         return { success: true };
       } catch (e) {
-        this.emitLog('error', `Konnte Befehl '${cmd}' nicht senden: ${e.message}`);
+        this.emitLog('error', t('serial.send_failed', { cmd, message: e.message }));
         return { success: false, error: e.message };
       }
     }
-    this.emitLog('error', `Befehl '${cmd}' verworfen: Port nicht verbunden`);
+    this.emitLog('error', t('serial.cmd_dropped', { cmd }));
     return { success: false, error: 'Not connected' };
   }
 

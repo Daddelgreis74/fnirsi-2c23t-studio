@@ -1,0 +1,164 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const M = require('../src/renderer/scope_math.js');
+
+const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || ''} ${a} !~ ${b}`);
+
+// 180 raw samples over the full screen width, like the firmware stream
+function wave(fn, tbNs, n = 180) {
+  return Uint8Array.from({ length: n }, (_, i) => Math.round(fn((i / (n - 1)) * M.X_DIVS * tbNs * 1e-9)));
+}
+
+test('parseVdivMv understands the firmware chip labels', () => {
+  assert.strictEqual(M.parseVdivMv('20M'), 20);
+  assert.strictEqual(M.parseVdivMv('500M'), 500);
+  assert.strictEqual(M.parseVdivMv('1V'), 1000);
+  assert.strictEqual(M.parseVdivMv('100V'), 100000);
+  assert.strictEqual(M.parseVdivMv('500mV'), 500);
+  assert.strictEqual(M.parseVdivMv('?'), null);
+});
+
+test('parseTimebaseNs understands the firmware chip labels', () => {
+  assert.strictEqual(M.parseTimebaseNs('50N'), 50);
+  assert.strictEqual(M.parseTimebaseNs('1U'), 1000);
+  assert.strictEqual(M.parseTimebaseNs('1M'), 1e6);
+  assert.strictEqual(M.parseTimebaseNs('5S'), 5e9);
+  assert.strictEqual(M.parseTimebaseNs('500US'), 5e5);
+  assert.strictEqual(M.parseTimebaseNs('10MS'), 1e7);
+  assert.strictEqual(M.parseTimebaseNs('x'), null);
+});
+
+test('rawToMv follows the device scaling (754/20000 per count and V/div)', () => {
+  assert.strictEqual(M.rawToMv(128, 1000), 0);
+  near(M.rawToMv(255, 1000), 127 * 754 * 1000 / 20000, 0.01);
+  near(M.rawToMv(0, 500), -128 * 754 * 500 / 20000, 0.01);
+});
+
+test('measureWave on a 500 Hz sine', () => {
+  const s = wave((t) => 128 + 64 * Math.sin(2 * Math.PI * 500 * t), 1e6);
+  const m = M.measureWave(s, 1000, 1e6);
+  near(m.vpp, 2 * 64 * 754 * 1000 / 20000, 80, 'vpp');
+  near(m.vmean, 0, 40, 'mean');
+  near(m.vrms, (64 * 754 * 1000 / 20000) / Math.SQRT2, 40, 'rms');
+  near(m.freqHz, 500, 10, 'freq');
+  near(m.dutyPct, 50, 5, 'duty');
+});
+
+test('measureWave on a 25% duty square wave with a DC offset', () => {
+  const s = wave((t) => ((t * 1000) % 1 < 0.25 ? 160 : 96), 1e6);
+  const m = M.measureWave(s, 500, 1e6);
+  near(m.freqHz, 1000, 20, 'freq');
+  near(m.dutyPct, 25, 4, 'duty');
+  near(m.vmax, (160 - 128) * 754 * 500 / 20000, 0.01, 'vmax');
+  near(m.vmin, (96 - 128) * 754 * 500 / 20000, 0.01, 'vmin');
+});
+
+test('measureWave rise time of a linear ramp edge', () => {
+  // 0 -> 100% over 10 samples, repeated
+  const s = Uint8Array.from({ length: 180 }, (_, i) => 96 + Math.min(64, (i % 40) * 6.4));
+  const m = M.measureWave(s, 1000, 1e6);
+  const samplePeriodNs = (1e6 * M.X_DIVS) / 179;
+  near(m.riseNs, 0.8 * 10 * samplePeriodNs, samplePeriodNs * 1.5, 'rise');
+});
+
+test('measureWave on a flat line gives no frequency', () => {
+  const m = M.measureWave(new Uint8Array(180).fill(128), 1000, 1e6);
+  assert.strictEqual(m.freqHz, null);
+  assert.strictEqual(m.dutyPct, null);
+  assert.strictEqual(m.riseNs, null);
+  assert.strictEqual(m.vpp, 0);
+});
+
+test('measureWave ignores noise: a flat line with +/-1 count jitter has no frequency, duty or rise time', () => {
+  const s = Uint8Array.from({ length: 180 }, (_, i) => 128 + (i % 2 ? 1 : -1));
+  const m = M.measureWave(s, 200, 1e6);
+  assert.strictEqual(m.freqHz, null);
+  assert.strictEqual(m.dutyPct, null);
+  assert.strictEqual(m.riseNs, null);
+});
+
+test('measureWave is not fooled by noise riding on a square wave', () => {
+  const s = wave((t) => (((t * 1000) % 1 < 0.5 ? 176 : 80) + ((Math.round(t * 1e7) % 3) - 1)), 1e6);
+  const m = M.measureWave(s, 500, 1e6);
+  near(m.freqHz, 1000, 20, 'freq');
+  near(m.dutyPct, 50, 5, 'duty');
+});
+
+test('measureWave rejects unusable input', () => {
+  assert.strictEqual(M.measureWave(null, 1000, 1e6), null);
+  assert.strictEqual(M.measureWave(new Uint8Array(1), 1000, 1e6), null);
+  assert.strictEqual(M.measureWave(new Uint8Array(180), null, 1e6), null);
+});
+
+test('cursorReadout converts division positions into time and voltage', () => {
+  const r = M.cursorReadout({ x1: 2, x2: 7, y1: 1, y2: -1.5 }, 500, 1e6);
+  assert.strictEqual(r.dtNs, 5e6);
+  assert.strictEqual(r.freqHz, 200);
+  assert.strictEqual(r.v1Mv, 500);
+  assert.strictEqual(r.v2Mv, -750);
+  assert.strictEqual(r.dvMv, 1250);
+});
+
+test('cursorReadout without a time span has no frequency', () => {
+  assert.strictEqual(M.cursorReadout({ x1: 3, x2: 3, y1: 0, y2: 0 }, 500, 1e6).freqHz, null);
+});
+
+test('formatters pick a readable unit', () => {
+  assert.strictEqual(M.formatVoltage(1234), '1.23 V');
+  assert.strictEqual(M.formatVoltage(-456), '-456 mV');
+  assert.strictEqual(M.formatTime(2.5e6), '2.50 ms');
+  assert.strictEqual(M.formatTime(800), '800 ns');
+  assert.strictEqual(M.formatTime(3e9), '3.00 s');
+  assert.strictEqual(M.formatTime(12e3), '12.0 µs');
+  assert.strictEqual(M.formatFreq(null), '--');
+});
+
+test('formatFreq stays in hertz unless a multiple is asked for', () => {
+  // Hertz by default, keeping every digit the measurement carries.
+  assert.strictEqual(M.formatFreq(1995), '1995 Hz');
+  assert.strictEqual(M.formatFreq(2.5e6), '2500000 Hz');
+  assert.strictEqual(M.formatFreq(123.456), '123.5 Hz');
+  assert.strictEqual(M.formatFreq(25), '25.00 Hz');
+
+  // An explicit multiple keeps the resolution instead of truncating it.
+  assert.strictEqual(M.formatFreq(1995, 'kHz'), '1.995 kHz');
+  assert.strictEqual(M.formatFreq(2.5e6, 'MHz'), '2.500000 MHz');
+  assert.strictEqual(M.formatFreq(1995, 'Hz'), '1995 Hz');
+});
+
+test('mathTrace adds or subtracts both channels in millivolts', () => {
+  const a = Uint8Array.from([128, 160, 96]);
+  const b = Uint8Array.from([128, 144, 128]);
+  const sum = M.mathTrace('add', a, b, 1000, 500);
+  const diff = M.mathTrace('sub', a, b, 1000, 500);
+  near(sum[1], M.rawToMv(160, 1000) + M.rawToMv(144, 500), 1e-9);
+  near(diff[2], M.rawToMv(96, 1000) - M.rawToMv(128, 500), 1e-9);
+  assert.strictEqual(sum.length, 3);
+});
+
+test('mathTrace needs both waves of the same length and a known operation', () => {
+  assert.strictEqual(M.mathTrace('add', null, new Uint8Array(3), 1000, 1000), null);
+  assert.strictEqual(M.mathTrace('add', new Uint8Array(2), new Uint8Array(3), 1000, 1000), null);
+  assert.strictEqual(M.mathTrace('div', new Uint8Array(3), new Uint8Array(3), 1000, 1000), null);
+});
+
+test('xyPoints puts CH1 on X and CH2 on Y, in divisions from the centre', () => {
+  const pts = M.xyPoints(Uint8Array.from([128, 160]), Uint8Array.from([128, 96]), 1000, 500);
+  assert.deepStrictEqual(pts[0], { x: 0, y: 0 });
+  near(pts[1].x, M.rawToMv(160, 1000) / 1000, 1e-9);
+  near(pts[1].y, M.rawToMv(96, 500) / 500, 1e-9);
+});
+
+test('xyPoints rejects missing or mismatched waves', () => {
+  assert.strictEqual(M.xyPoints(null, new Uint8Array(2), 1000, 1000), null);
+  assert.strictEqual(M.xyPoints(new Uint8Array(1), new Uint8Array(2), 1000, 1000), null);
+});
+
+test('stepInList moves one notch and stops at the ends', () => {
+  const list = [0.5, 1, 5, 10];
+  assert.strictEqual(M.stepInList(list, 1, 1), 5);
+  assert.strictEqual(M.stepInList(list, 1, -1), 0.5);
+  assert.strictEqual(M.stepInList(list, 10, 1), 10);
+  assert.strictEqual(M.stepInList(list, 0.5, -1), 0.5);
+  assert.strictEqual(M.stepInList(list, 2, 1), 5);
+});
