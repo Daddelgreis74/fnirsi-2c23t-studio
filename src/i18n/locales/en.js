@@ -78,6 +78,7 @@
   "scope.frequency": "Frequency:",
   "scope.live_badge": "● HARDWARE LIVE TELEMETRY [{tb} | CH1:{v1} | CH2:{v2}]",
   "scope.sim_badge": "○ SIMULATOR MODE (waiting for USB telemetry...)",
+  "scope.sim_hint": "Device not in Oscilloscope mode? Switch it to Oscilloscope manually on the device.",
   "gallery.title": "Screenshot & waveform archive",
   "gallery.subtitle": "Automatic synchronisation with the FNIRSI 2C23T storage",
   "gallery.refresh": "Refresh",

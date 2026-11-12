@@ -70,12 +70,25 @@ function switchTab(target) {
   if (target === 'dmm') renderDmmCanvas();
 }
 
+// Ask the device to follow the tab the user picked (firmware: MODE:SCOPE|DMM|GEN)
+const DEVICE_MODE_BY_TAB = { dmm: 'DMM', scope: 'SCOPE', generator: 'GEN' };
+function requestDeviceMode(tab) {
+  const mode = DEVICE_MODE_BY_TAB[tab];
+  if (mode && isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+    window.api.sendDmmCommand('MODE:' + mode);
+  }
+}
+function onTabClick(tab) {
+  switchTab(tab);
+  requestDeviceMode(tab);
+}
+
 navItems.forEach(item => {
-  item.addEventListener('click', () => switchTab(item.dataset.tab));
+  item.addEventListener('click', () => onTabClick(item.dataset.tab));
 });
 
 instrumentButtons.forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  btn.addEventListener('click', () => onTabClick(btn.dataset.tab));
 });
 
 // Refresh button
@@ -1149,6 +1162,9 @@ function renderScope() {
   } else {
     scopeCtx.fillStyle = '#64748b';
     scopeCtx.fillText(t('scope.sim_badge'), 14, height - 12);
+    if (isLiveSerialConnected) {
+      scopeCtx.fillText(t('scope.sim_hint'), 14, height - 28);
+    }
   }
 
   const showCh1 = document.getElementById('chkCh1').checked;

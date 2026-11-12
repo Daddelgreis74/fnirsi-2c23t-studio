@@ -78,6 +78,7 @@
   "scope.frequency": "Fréquence :",
   "scope.live_badge": "● TÉLÉMÉTRIE MATÉRIELLE LIVE [{tb} | CH1:{v1} | CH2:{v2}]",
   "scope.sim_badge": "○ MODE SIMULATEUR (en attente de la télémétrie USB...)",
+  "scope.sim_hint": "L'appareil n'est pas en mode Oscilloscope ? Passez-le en mode Oscilloscope avec ses boutons.",
   "gallery.title": "Archive des captures & formes d'onde",
   "gallery.subtitle": "Synchronisation automatique avec la mémoire du FNIRSI 2C23T",
   "gallery.refresh": "Actualiser",
