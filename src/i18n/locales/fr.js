@@ -2,6 +2,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).fr = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.timebase_short": "Base de temps",
+  "scope.gentest_short": "Test générateur",
   "header.searching": "Recherche de l'appareil...",
   "dmm.alert": "Bip à la valeur cible",
   "dmm.alert_target": "Cible",
@@ -74,9 +76,6 @@
   "scope.title": "Oscilloscope double voie & labo de mesure",
   "scope.fft": "Spectre FFT",
   "scope.phosphor": "Phosphore",
-  "scope.timebase": "Base de temps (Time/Div)",
-  "scope.voltscale": "Échelle de tension (Volts/Div)",
-  "scope.gentest": "Test du générateur de signaux",
   "wave.sine": "Sinus",
   "wave.square": "Carré",
   "wave.triangle": "Triangle",

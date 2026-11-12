@@ -325,85 +325,75 @@
         <section class="tab-panel" id="tab-scope">
           <div class="panel-header">
             <h2 data-i18n="scope.title">Dual-Channel Oszilloskop & Mess-Labor</h2>
-            <div class="controls-toolbar">
-              <label><input type="checkbox" id="chkCh1" checked> <span class="badge-ch1">CH1</span></label>
-              <label><input type="checkbox" id="chkCh2" checked> <span class="badge-ch2">CH2</span></label>
-              <label><input type="checkbox" id="chkFft"> <span data-i18n="scope.fft">FFT Spektrum</span></label>
-              <label><input type="checkbox" id="chkPersist" checked> <span data-i18n="scope.phosphor">Phosphor</span></label>
-              <label><input type="checkbox" id="chkXY"> <span data-i18n="scope.xy">XY</span></label>
-              <label>
-                <select id="selMath" title="Math" data-i18n-title="scope.math_title">
-                  <option value="" data-i18n="scope.math_off">Math: aus</option>
-                  <option value="add">CH1 + CH2</option>
-                  <option value="sub">CH1 − CH2</option>
-                </select>
-              </label>
-              <button class="btn-action" id="btnScopeAuto" style="background:#0284c7; margin-right:6px;">AUTO</button>
-              <button class="btn-action" id="btnScopeRun">STOP</button>
-            </div>
           </div>
 
           <div class="scope-layout">
-            <div class="scope-screen-wrapper">
-              <canvas id="scopeCanvas" width="800" height="480"></canvas>
-              <div class="scope-overlay-stats">
-                <div class="stat-group ch1">
-                  <span class="lbl">CH1:</span>
-                  <span id="statCh1Vpp">0.00 Vpp</span>
-                  <span id="statCh1Vrms">0.00 Vrms</span>
-                  <span id="statCh1Freq">0.00 Hz</span>
-                </div>
-                <div class="stat-group ch2">
-                  <span class="lbl">CH2:</span>
-                  <span id="statCh2Vpp">0.00 Vpp</span>
-                  <span id="statCh2Vrms">0.00 Vrms</span>
-                  <span id="statCh2Freq">0.00 Hz</span>
+            <div class="scope-main">
+              <div class="scope-screen-wrapper">
+                <canvas id="scopeCanvas" width="800" height="480"></canvas>
+                <div class="scope-overlay-stats">
+                  <div class="stat-group ch1">
+                    <span class="lbl">CH1:</span>
+                    <span id="statCh1Vpp">0.00 Vpp</span>
+                    <span id="statCh1Vrms">0.00 Vrms</span>
+                    <span id="statCh1Freq">0.00 Hz</span>
+                  </div>
+                  <div class="stat-group ch2">
+                    <span class="lbl">CH2:</span>
+                    <span id="statCh2Vpp">0.00 Vpp</span>
+                    <span id="statCh2Vrms">0.00 Vrms</span>
+                    <span id="statCh2Freq">0.00 Hz</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- SIDEBAR CONTROLS FOR SCOPE -->
-            <div class="scope-controls-panel">
-              <div class="control-box">
-                <h3 data-i18n="scope.cursors_title">Cursor</h3>
-                <div class="controls-toolbar">
-                  <label><input type="checkbox" id="chkCursors"> <span data-i18n="scope.cursors_on">Aktiv</span></label>
-                  <label><span data-i18n="scope.cursor_channel">Kanal:</span>
-                    <select id="selCursorCh">
-                      <option value="1">CH1</option>
-                      <option value="2">CH2</option>
+              <!-- SETTINGS UNDER THE SCREEN, LIKE A REAL SCOPE -->
+              <div class="scope-settings">
+                <div class="scope-strip">
+                  <div class="strip-group">
+                    <span class="strip-title" data-i18n="scope.timebase_short">Zeit/Div</span>
+                    <button class="btn-pill" id="btnTbDec">−</button>
+                    <span class="strip-value" id="lblTimebase">1 ms</span>
+                    <button class="btn-pill" id="btnTbInc">+</button>
+                  </div>
+                  <div class="strip-group ch1">
+                    <span class="badge-ch1">CH1</span>
+                    <button class="btn-pill" id="btnCh1Dec">−</button>
+                    <span class="strip-value" id="lblCh1Scale">1.0 V/div</span>
+                    <button class="btn-pill" id="btnCh1Inc">+</button>
+                  </div>
+                  <div class="strip-group ch2">
+                    <span class="badge-ch2">CH2</span>
+                    <button class="btn-pill" id="btnCh2Dec">−</button>
+                    <span class="strip-value" id="lblCh2Scale">1.0 V/div</span>
+                    <button class="btn-pill" id="btnCh2Inc">+</button>
+                  </div>
+                  <div class="strip-group strip-run">
+                    <button class="btn-action" id="btnScopeAuto" style="background:#0284c7;">AUTO</button>
+                    <button class="btn-action" id="btnScopeRun">STOP</button>
+                  </div>
+                </div>
+                <div class="scope-strip scope-strip-display">
+                  <label><input type="checkbox" id="chkCh1" checked> <span class="badge-ch1">CH1</span></label>
+                  <label><input type="checkbox" id="chkCh2" checked> <span class="badge-ch2">CH2</span></label>
+                  <label><input type="checkbox" id="chkFft"> <span data-i18n="scope.fft">FFT Spektrum</span></label>
+                  <label><input type="checkbox" id="chkPersist" checked> <span data-i18n="scope.phosphor">Phosphor</span></label>
+                  <label><input type="checkbox" id="chkXY"> <span data-i18n="scope.xy">XY</span></label>
+                  <label>
+                    <select id="selMath" title="Math" data-i18n-title="scope.math_title">
+                      <option value="" data-i18n="scope.math_off">Math: aus</option>
+                      <option value="add">CH1 + CH2</option>
+                      <option value="sub">CH1 − CH2</option>
                     </select>
                   </label>
+                  <span class="scope-tabs">
+                    <button class="btn-pill" data-subtab="captures" data-i18n="scope.captures_title">Aufnahmen</button>
+                    <button class="btn-pill" data-subtab="bus" data-i18n="scope.bus_title">Bus-Dekodierung</button>
+                    <button class="btn-pill" data-subtab="gen" data-i18n="scope.gentest_short">Generator-Test</button>
+                  </span>
                 </div>
-                <table class="scope-table">
-                  <thead><tr><th></th><th>1</th><th>2</th><th>Δ</th></tr></thead>
-                  <tbody>
-                    <tr><th data-i18n="scope.cursor_time">Zeit</th><td id="curX1">--</td><td id="curX2">--</td><td id="curDx">--</td></tr>
-                    <tr><th data-i18n="scope.cursor_volt">Spannung</th><td id="curY1">--</td><td id="curY2">--</td><td id="curDy">--</td></tr>
-                    <tr><th>1/ΔT</th><td colspan="3" id="curFreq">--</td></tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.measure_title">Messungen</h3>
-                <table class="scope-table">
-                  <thead><tr><th></th><th class="ch1">CH1</th><th class="ch2">CH2</th></tr></thead>
-                  <tbody>
-                    <tr><th data-i18n="scope.m_vpp">Vss</th><td id="m1_vpp">--</td><td id="m2_vpp">--</td></tr>
-                    <tr><th data-i18n="scope.m_vmax">Vmax</th><td id="m1_vmax">--</td><td id="m2_vmax">--</td></tr>
-                    <tr><th data-i18n="scope.m_vmin">Vmin</th><td id="m1_vmin">--</td><td id="m2_vmin">--</td></tr>
-                    <tr><th data-i18n="scope.m_vmean">Vmittel</th><td id="m1_vmean">--</td><td id="m2_vmean">--</td></tr>
-                    <tr><th data-i18n="scope.m_vrms">Veff</th><td id="m1_vrms">--</td><td id="m2_vrms">--</td></tr>
-                    <tr><th data-i18n="scope.m_freq">Frequenz</th><td id="m1_freq">--</td><td id="m2_freq">--</td></tr>
-                    <tr><th data-i18n="scope.m_duty">Tastgrad</th><td id="m1_duty">--</td><td id="m2_duty">--</td></tr>
-                    <tr><th data-i18n="scope.m_rise">Anstiegszeit</th><td id="m1_rise">--</td><td id="m2_rise">--</td></tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.captures_title">Aufnahmen</h3>
+                <div class="scope-subpane" data-subpane="captures" hidden>
+                  <div class="control-box scope-pane-body">
                 <div class="controls-toolbar">
                   <button class="btn-action" id="btnCapture" data-i18n="scope.capture">Aufnehmen</button>
                   <label><input type="checkbox" id="chkCaptureOverlay"> <span data-i18n="scope.capture_overlay">Überlagern</span></label>
@@ -414,9 +404,9 @@
                   <button class="btn-action" id="btnCaptureDelete" data-i18n="scope.capture_delete">Löschen</button>
                 </div>
               </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.bus_title">Bus-Dekodierung</h3>
+                </div>
+                <div class="scope-subpane" data-subpane="bus" hidden>
+              <div class="control-box scope-pane-body">
                 <div class="controls-toolbar">
                   <select id="selBusProto">
                     <option value="" data-i18n="scope.bus_off">Aus</option>
@@ -438,29 +428,9 @@
                 </div>
                 <div class="bus-output" id="busOutput"></div>
               </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.timebase">Zeitbasis (Time/Div)</h3>
-                <div class="btn-grid-row">
-                  <button class="btn-pill" data-timebase="0.5">500µs</button>
-                  <button class="btn-pill active" data-timebase="1">1ms</button>
-                  <button class="btn-pill" data-timebase="5">5ms</button>
-                  <button class="btn-pill" data-timebase="10">10ms</button>
                 </div>
-              </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.voltscale">Spannungsskalierung (Volts/Div)</h3>
-                <div class="channel-volts">
-                  <label class="ch1-lbl">CH1: <span id="lblCh1Scale">1.0 V/div</span></label>
-                  <input type="range" id="rngCh1Scale" min="0.1" max="5.0" step="0.1" value="1.0">
-                  <label class="ch2-lbl">CH2: <span id="lblCh2Scale">1.0 V/div</span></label>
-                  <input type="range" id="rngCh2Scale" min="0.1" max="5.0" step="0.1" value="1.0">
-                </div>
-              </div>
-
-              <div class="control-box">
-                <h3 data-i18n="scope.gentest">Signalgenerator Generator-Test</h3>
+                <div class="scope-subpane" data-subpane="gen" hidden>
+              <div class="control-box scope-pane-body">
                 <div class="sig-presets">
                   <button class="btn-pill active" data-wave="sine" data-i18n="wave.sine">Sinus</button>
                   <button class="btn-pill" data-wave="square" data-i18n="wave.square">Rechteck</button>
@@ -471,6 +441,48 @@
                   <label><span data-i18n="scope.frequency">Frequenz:</span> <span id="lblGenFreq">1.0 kHz</span></label>
                   <input type="range" id="rngGenFreq" min="100" max="10000" step="100" value="1000">
                 </div>
+              </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- MEASUREMENTS ON THE RIGHT -->
+            <div class="scope-side">
+              <div class="control-box">
+                <h3 data-i18n="scope.measure_title">Messungen</h3>
+                <table class="scope-table">
+                  <thead><tr><th></th><th class="ch1">CH1</th><th class="ch2">CH2</th></tr></thead>
+                  <tbody>
+                    <tr><th data-i18n="scope.m_vpp">Vss</th><td id="m1_vpp">--</td><td id="m2_vpp">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmax">Vmax</th><td id="m1_vmax">--</td><td id="m2_vmax">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmin">Vmin</th><td id="m1_vmin">--</td><td id="m2_vmin">--</td></tr>
+                    <tr><th data-i18n="scope.m_vmean">Vmittel</th><td id="m1_vmean">--</td><td id="m2_vmean">--</td></tr>
+                    <tr><th data-i18n="scope.m_vrms">Veff</th><td id="m1_vrms">--</td><td id="m2_vrms">--</td></tr>
+                    <tr><th data-i18n="scope.m_freq">Frequenz</th><td id="m1_freq">--</td><td id="m2_freq">--</td></tr>
+                    <tr><th data-i18n="scope.m_duty">Tastgrad</th><td id="m1_duty">--</td><td id="m2_duty">--</td></tr>
+                    <tr><th data-i18n="scope.m_rise">Anstiegszeit</th><td id="m1_rise">--</td><td id="m2_rise">--</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="control-box">
+                <h3 data-i18n="scope.cursors_title">Cursor</h3>
+                <div class="controls-toolbar">
+                  <label><input type="checkbox" id="chkCursors"> <span data-i18n="scope.cursors_on">Aktiv</span></label>
+                  <label><span data-i18n="scope.cursor_channel">Kanal:</span>
+                    <select id="selCursorCh">
+                      <option value="1">CH1</option>
+                      <option value="2">CH2</option>
+                    </select>
+                  </label>
+                </div>
+                <table class="scope-table">
+                  <thead><tr><th></th><th>1</th><th>2</th><th>Δ</th></tr></thead>
+                  <tbody>
+                    <tr><th data-i18n="scope.cursor_time">Zeit</th><td id="curX1">--</td><td id="curX2">--</td><td id="curDx">--</td></tr>
+                    <tr><th data-i18n="scope.cursor_volt">Spannung</th><td id="curY1">--</td><td id="curY2">--</td><td id="curDy">--</td></tr>
+                    <tr><th>1/ΔT</th><td colspan="3" id="curFreq">--</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

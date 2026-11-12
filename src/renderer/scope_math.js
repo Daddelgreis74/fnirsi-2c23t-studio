@@ -129,5 +129,13 @@
     return `${hz.toFixed(1)} Hz`;
   }
 
-  return { X_DIVS, Y_DIVS, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, mathTrace, xyPoints, cursorReadout, formatVoltage, formatTime, formatFreq };
+  function stepInList(list, current, dir) {
+    let i = list.findIndex(v => v >= current);
+    if (i < 0) i = list.length - 1;
+    if (list[i] > current && dir < 0) i -= 1;
+    else if (list[i] === current || dir < 0) i += dir;
+    return list[Math.max(0, Math.min(list.length - 1, i))];
+  }
+
+  return { stepInList, X_DIVS, Y_DIVS, parseVdivMv, parseTimebaseNs, rawToMv, measureWave, mathTrace, xyPoints, cursorReadout, formatVoltage, formatTime, formatFreq };
 });

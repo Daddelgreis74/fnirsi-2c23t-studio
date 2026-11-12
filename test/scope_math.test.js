@@ -143,3 +143,12 @@ test('xyPoints rejects missing or mismatched waves', () => {
   assert.strictEqual(M.xyPoints(null, new Uint8Array(2), 1000, 1000), null);
   assert.strictEqual(M.xyPoints(new Uint8Array(1), new Uint8Array(2), 1000, 1000), null);
 });
+
+test('stepInList moves one notch and stops at the ends', () => {
+  const list = [0.5, 1, 5, 10];
+  assert.strictEqual(M.stepInList(list, 1, 1), 5);
+  assert.strictEqual(M.stepInList(list, 1, -1), 0.5);
+  assert.strictEqual(M.stepInList(list, 10, 1), 10);
+  assert.strictEqual(M.stepInList(list, 0.5, -1), 0.5);
+  assert.strictEqual(M.stepInList(list, 2, 1), 5);
+});

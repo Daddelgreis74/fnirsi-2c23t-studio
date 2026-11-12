@@ -885,6 +885,8 @@ function updateScopeMetadataUI() {
       statCh1Freq.innerText = `${liveScopeMeta.f1} Hz`;
     }
   }
+  const tbLive = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+  if (tbLive && isLiveSerialConnected) setText(document.getElementById('lblTimebase'), ScopeMath.formatTime(tbLive));
   if (lblCh1Scale && liveScopeMeta.v1) lblCh1Scale.innerText = `${liveScopeMeta.v1}/div`;
 
   const statCh2Vpp = document.getElementById('statCh2Vpp');
@@ -1118,22 +1120,45 @@ if (btnScopeAuto) {
   });
 }
 
-document.querySelectorAll('[data-timebase]').forEach(btn => {
+// Timebase and volts/div: on the device when linked (the label then follows its $SCOPE frames), else the simulation
+const TIMEBASE_STEPS_MS = [0.1, 0.2, 0.5, 1, 2, 5, 10];
+const SCALE_STEPS_V = [0.1, 0.2, 0.5, 1, 2, 5];
+const lblTimebase = document.getElementById('lblTimebase');
+
+function showSimSettings() {
+  setText(lblTimebase, ScopeMath.formatTime(timebaseVal * 1e6));
+  setText(document.getElementById('lblCh1Scale'), `${ch1Scale} V/div`);
+  setText(document.getElementById('lblCh2Scale'), `${ch2Scale} V/div`);
+}
+
+function stepSetting(device, dir, simStep) {
+  if (isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+    window.api.sendDmmCommand(`SCOPE:${device}${dir > 0 ? '+' : '-'}\n`);
+    return;
+  }
+  simStep(dir);
+  showSimSettings();
+}
+
+[['btnTbDec', 'TB', -1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+ ['btnTbInc', 'TB', 1, d => { timebaseVal = ScopeMath.stepInList(TIMEBASE_STEPS_MS, timebaseVal, d); }],
+ ['btnCh1Dec', 'CH1:', -1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
+ ['btnCh1Inc', 'CH1:', 1, d => { ch1Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch1Scale, d); }],
+ ['btnCh2Dec', 'CH2:', -1, d => { ch2Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch2Scale, d); }],
+ ['btnCh2Inc', 'CH2:', 1, d => { ch2Scale = ScopeMath.stepInList(SCALE_STEPS_V, ch2Scale, d); }],
+].forEach(([id, device, dir, simStep]) => {
+  document.getElementById(id).addEventListener('click', () => stepSetting(device, dir, simStep));
+});
+
+showSimSettings();
+
+// Sub-panels under the screen (captures, bus decoding, generator test): one open at a time, click again to close
+document.querySelectorAll('[data-subtab]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-timebase]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    timebaseVal = parseFloat(btn.dataset.timebase);
+    const open = !btn.classList.contains('active');
+    document.querySelectorAll('[data-subtab]').forEach(b => b.classList.toggle('active', open && b === btn));
+    document.querySelectorAll('[data-subpane]').forEach(p => { p.hidden = !(open && p.dataset.subpane === btn.dataset.subtab); });
   });
-});
-
-document.getElementById('rngCh1Scale').addEventListener('input', (e) => {
-  ch1Scale = parseFloat(e.target.value);
-  document.getElementById('lblCh1Scale').innerText = `${ch1Scale.toFixed(1)} V/div`;
-});
-
-document.getElementById('rngCh2Scale').addEventListener('input', (e) => {
-  ch2Scale = parseFloat(e.target.value);
-  document.getElementById('lblCh2Scale').innerText = `${ch2Scale.toFixed(1)} V/div`;
 });
 
 document.querySelectorAll('.sig-presets button').forEach(btn => {

@@ -2,6 +2,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).en = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.timebase_short": "Time/div",
+  "scope.gentest_short": "Generator test",
   "header.searching": "Searching for device...",
   "dmm.alert": "Beep at target value",
   "dmm.alert_target": "Target",
@@ -74,9 +76,6 @@
   "scope.title": "Dual-channel oscilloscope & measurement lab",
   "scope.fft": "FFT spectrum",
   "scope.phosphor": "Phosphor",
-  "scope.timebase": "Time base (Time/Div)",
-  "scope.voltscale": "Voltage scale (Volts/Div)",
-  "scope.gentest": "Signal generator test",
   "wave.sine": "Sine",
   "wave.square": "Square",
   "wave.triangle": "Triangle",

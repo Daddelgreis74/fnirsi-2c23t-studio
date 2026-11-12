@@ -338,9 +338,63 @@ body {
 /* --- TAB 1: SCOPE --- */
 .scope-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 16px;
+  align-items: start;
 }
+
+.scope-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* the screen keeps its 5:3 ratio and shrinks so that the settings below stay in view */
+.scope-screen-wrapper {
+  width: 100%;
+  max-width: max(420px, calc((100vh - 290px) * 5 / 3));
+  align-self: center;
+}
+
+.scope-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
+
+.scope-settings {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scope-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  font-size: 12px;
+}
+
+.scope-strip label { display: flex; align-items: center; gap: 4px; }
+
+.strip-group { display: flex; align-items: center; gap: 6px; }
+.strip-run { margin-left: auto; }
+.strip-title { color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+.strip-value { font-family: var(--font-mono); min-width: 68px; text-align: center; }
+.strip-group.ch1 .strip-value { color: #facc15; }
+.strip-group.ch2 .strip-value { color: var(--color-cyan); }
+.strip-group .btn-pill { min-width: 28px; font-size: 14px; line-height: 1; }
+.scope-tabs { margin-left: auto; display: flex; gap: 6px; }
+
+.scope-subpane .control-box { max-height: 190px; overflow-y: auto; }
 
 .scope-screen-wrapper {
   background-color: #030610;
@@ -354,7 +408,7 @@ body {
 #scopeCanvas {
   display: block;
   width: 100%;
-  height: 480px;
+  height: auto;
 }
 
 .scope-overlay-stats {

@@ -2,6 +2,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else (root.I18nLocales = root.I18nLocales || {}).de = data;
 })(typeof self !== 'undefined' ? self : this, {
+  "scope.timebase_short": "Zeit/Div",
+  "scope.gentest_short": "Generator-Test",
   "header.searching": "Suche Gerät...",
   "dmm.alert": "Signal bei Zielwert",
   "dmm.alert_target": "Ziel",
@@ -74,9 +76,6 @@
   "scope.title": "Dual-Channel Oszilloskop & Mess-Labor",
   "scope.fft": "FFT Spektrum",
   "scope.phosphor": "Phosphor",
-  "scope.timebase": "Zeitbasis (Time/Div)",
-  "scope.voltscale": "Spannungsskalierung (Volts/Div)",
-  "scope.gentest": "Signalgenerator Generator-Test",
   "wave.sine": "Sinus",
   "wave.square": "Rechteck",
   "wave.triangle": "Dreieck",
