@@ -3,6 +3,10 @@
   else (root.I18nLocales = root.I18nLocales || {}).en = data;
 })(typeof self !== 'undefined' ? self : this, {
   "header.searching": "Searching for device...",
+  "dmm.alert": "Beep at target value",
+  "dmm.alert_target": "Target",
+  "dmm.alert_in_band": "● in range",
+  "dmm.alert_hint": "Target and tolerance must be numbers",
   "header.hw_checking": "HW: checking...",
   "header.drive_none": "Drive: --",
   "header.drive": "Drive: {drive}",
@@ -77,6 +81,12 @@
   "wave.ecg_pulse": "ECG / Pulse",
   "scope.frequency": "Frequency:",
   "scope.live_badge": "● HARDWARE LIVE TELEMETRY [{tb} | CH1:{v1} | CH2:{v2}]",
+  "scope.measure_title": "Measurements & cursors",
+  "scope.cursors": "Cursors",
+  "scope.cursor_channel": "Channel:",
+  "scope.cursor_readout": "ΔT {dt} · 1/ΔT {freq}\nΔV {dv} · V1 {v1} · V2 {v2}",
+  "scope.measure_line": "{ch}: Vmax {vmax} · Vmin {vmin} · Vavg {vmean} · Vrms {vrms}\n     Freq {freq} · Duty {duty} · Rise {rise}",
+  "scope.measure_none": "No live data",
   "scope.sim_badge": "○ SIMULATOR MODE (waiting for USB telemetry...)",
   "scope.sim_hint": "Device not in Oscilloscope mode? Switch it to Oscilloscope manually on the device.",
   "gallery.title": "Screenshot & waveform archive",

@@ -1182,3 +1182,15 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
 }
+
+.scope-readout {
+  margin-top: 8px;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+
+.scope-readout .ch1 { color: #facc15; }
+.scope-readout .ch2 { color: #00f2fe; }

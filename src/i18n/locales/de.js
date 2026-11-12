@@ -3,6 +3,10 @@
   else (root.I18nLocales = root.I18nLocales || {}).de = data;
 })(typeof self !== 'undefined' ? self : this, {
   "header.searching": "Suche Gerät...",
+  "dmm.alert": "Signal bei Zielwert",
+  "dmm.alert_target": "Ziel",
+  "dmm.alert_in_band": "● im Bereich",
+  "dmm.alert_hint": "Ziel und Toleranz müssen Zahlen sein",
   "header.hw_checking": "HW: Prüfe...",
   "header.drive_none": "Laufwerk: --",
   "header.drive": "Laufwerk: {drive}",
@@ -77,6 +81,12 @@
   "wave.ecg_pulse": "EKG / Puls",
   "scope.frequency": "Frequenz:",
   "scope.live_badge": "● HARDWARE LIVE TELEMETRIE [{tb} | CH1:{v1} | CH2:{v2}]",
+  "scope.measure_title": "Messungen & Cursor",
+  "scope.cursors": "Cursor",
+  "scope.cursor_channel": "Kanal:",
+  "scope.cursor_readout": "ΔT {dt} · 1/ΔT {freq}\nΔV {dv} · V1 {v1} · V2 {v2}",
+  "scope.measure_line": "{ch}: Vmax {vmax} · Vmin {vmin} · Vmitt {vmean} · Veff {vrms}\n     Freq {freq} · Tastgrad {duty} · Anstieg {rise}",
+  "scope.measure_none": "Keine Live-Daten",
   "scope.sim_badge": "○ SIMULATOR MODUS (Warte auf USB Telemetrie...)",
   "scope.sim_hint": "Gerät nicht im Oszilloskop-Modus? Am Gerät manuell auf Oszilloskop umschalten.",
   "gallery.title": "Screenshot & Wellenform Archiv",

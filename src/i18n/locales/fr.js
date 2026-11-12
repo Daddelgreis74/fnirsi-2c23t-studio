@@ -3,6 +3,10 @@
   else (root.I18nLocales = root.I18nLocales || {}).fr = data;
 })(typeof self !== 'undefined' ? self : this, {
   "header.searching": "Recherche de l'appareil...",
+  "dmm.alert": "Bip à la valeur cible",
+  "dmm.alert_target": "Cible",
+  "dmm.alert_in_band": "● dans la plage",
+  "dmm.alert_hint": "La cible et la tolérance doivent être des nombres",
   "header.hw_checking": "HW : vérification...",
   "header.drive_none": "Lecteur : --",
   "header.drive": "Lecteur : {drive}",
@@ -77,6 +81,12 @@
   "wave.ecg_pulse": "ECG / Pouls",
   "scope.frequency": "Fréquence :",
   "scope.live_badge": "● TÉLÉMÉTRIE MATÉRIELLE LIVE [{tb} | CH1:{v1} | CH2:{v2}]",
+  "scope.measure_title": "Mesures et curseurs",
+  "scope.cursors": "Curseurs",
+  "scope.cursor_channel": "Voie :",
+  "scope.cursor_readout": "ΔT {dt} · 1/ΔT {freq}\nΔV {dv} · V1 {v1} · V2 {v2}",
+  "scope.measure_line": "{ch} : Vmax {vmax} · Vmin {vmin} · Vmoy {vmean} · Veff {vrms}\n     Fréq {freq} · Rapport cyclique {duty} · Montée {rise}",
+  "scope.measure_none": "Pas de données live",
   "scope.sim_badge": "○ MODE SIMULATEUR (en attente de la télémétrie USB...)",
   "scope.sim_hint": "L'appareil n'est pas en mode Oscilloscope ? Passez-le en mode Oscilloscope avec ses boutons.",
   "gallery.title": "Archive des captures & formes d'onde",

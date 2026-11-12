@@ -1091,6 +1091,120 @@ document.getElementById('rngGenFreq').addEventListener('input', (e) => {
   document.getElementById('lblGenFreq').innerText = genFreq >= 1000 ? `${(genFreq/1000).toFixed(1)} kHz` : `${genFreq} Hz`;
 });
 
+// Cursors (positions in divisions: x from the left edge, y from the channel centre) and measurements
+const chkCursors = document.getElementById('chkCursors');
+const selCursorCh = document.getElementById('selCursorCh');
+const scopeCursorReadout = document.getElementById('scopeCursorReadout');
+const scopeMeasures = document.getElementById('scopeMeasures');
+const scopeCursors = { x1: 2, x2: 7, y1: 2, y2: -2 };
+const scopeGeometry = { divX: 80, divY: 60, centerY: 240 };
+let draggedCursor = null;
+
+function setText(el, text) {
+  if (el && el.textContent !== text) el.textContent = text;
+}
+
+function scopeMouse(e) {
+  const rect = scopeCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (scopeCanvas.width / rect.width),
+    y: (e.clientY - rect.top) * (scopeCanvas.height / rect.height)
+  };
+}
+
+function cursorAt(pos) {
+  const { divX, divY, centerY } = scopeGeometry;
+  const hits = [
+    ['x1', Math.abs(pos.x - scopeCursors.x1 * divX)],
+    ['x2', Math.abs(pos.x - scopeCursors.x2 * divX)],
+    ['y1', Math.abs(pos.y - (centerY - scopeCursors.y1 * divY))],
+    ['y2', Math.abs(pos.y - (centerY - scopeCursors.y2 * divY))]
+  ].filter(([, d]) => d <= 10);
+  hits.sort((a, b) => a[1] - b[1]);
+  return hits.length ? hits[0][0] : null;
+}
+
+scopeCanvas.addEventListener('mousedown', (e) => {
+  if (chkCursors.checked) draggedCursor = cursorAt(scopeMouse(e));
+});
+scopeCanvas.addEventListener('mousemove', (e) => {
+  if (!chkCursors.checked) return;
+  const pos = scopeMouse(e);
+  if (draggedCursor) {
+    const { divX, divY, centerY } = scopeGeometry;
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    if (draggedCursor[0] === 'x') scopeCursors[draggedCursor] = clamp(pos.x / divX, 0, ScopeMath.X_DIVS);
+    else scopeCursors[draggedCursor] = clamp((centerY - pos.y) / divY, -ScopeMath.Y_DIVS / 2, ScopeMath.Y_DIVS / 2);
+  } else {
+    const hit = cursorAt(pos);
+    scopeCanvas.style.cursor = hit ? (hit[0] === 'x' ? 'ew-resize' : 'ns-resize') : '';
+  }
+});
+window.addEventListener('mouseup', () => { draggedCursor = null; });
+
+function drawCursors(centerY, divX, divY, width, height) {
+  scopeGeometry.divX = divX;
+  scopeGeometry.divY = divY;
+  scopeGeometry.centerY = centerY;
+  scopeCtx.save();
+  scopeCtx.strokeStyle = '#f472b6';
+  scopeCtx.fillStyle = '#f472b6';
+  scopeCtx.lineWidth = 1;
+  scopeCtx.setLineDash([6, 4]);
+  scopeCtx.font = '11px Cascadia Code, monospace';
+  scopeCtx.beginPath();
+  for (const [key, label] of [['x1', 'X1'], ['x2', 'X2']]) {
+    const x = scopeCursors[key] * divX;
+    scopeCtx.moveTo(x, 0);
+    scopeCtx.lineTo(x, height);
+    scopeCtx.fillText(label, x + 4, 12);
+  }
+  for (const [key, label] of [['y1', 'Y1'], ['y2', 'Y2']]) {
+    const y = centerY - scopeCursors[key] * divY;
+    scopeCtx.moveTo(0, y);
+    scopeCtx.lineTo(width, y);
+    scopeCtx.fillText(label, width - 22, y - 4);
+  }
+  scopeCtx.stroke();
+  scopeCtx.restore();
+}
+
+function updateScopeReadouts(live) {
+  const ch = selCursorCh.value;
+  const meta = { 1: liveScopeMeta.v1, 2: liveScopeMeta.v2 };
+  const tbNs = ScopeMath.parseTimebaseNs(liveScopeMeta.tb);
+
+  if (chkCursors.checked) {
+    const vdivMv = ScopeMath.parseVdivMv(meta[ch]);
+    if (live && vdivMv && tbNs) {
+      const r = ScopeMath.cursorReadout(scopeCursors, vdivMv, tbNs);
+      setText(scopeCursorReadout, t('scope.cursor_readout', {
+        dt: ScopeMath.formatTime(r.dtNs), freq: ScopeMath.formatFreq(r.freqHz), dv: ScopeMath.formatVoltage(r.dvMv),
+        v1: ScopeMath.formatVoltage(r.v1Mv), v2: ScopeMath.formatVoltage(r.v2Mv)
+      }));
+    } else {
+      setText(scopeCursorReadout, t('scope.measure_none'));
+    }
+  } else {
+    setText(scopeCursorReadout, '');
+  }
+
+  const lines = [];
+  if (live) {
+    for (const [n, wave, enabled] of [[1, liveScopeWave1, liveScopeMeta.ch1En], [2, liveScopeWave2, liveScopeMeta.ch2En]]) {
+      const m = enabled && ScopeMath.measureWave(wave, ScopeMath.parseVdivMv(meta[n]), tbNs);
+      if (!m) continue;
+      lines.push(t('scope.measure_line', {
+        ch: `CH${n}`, vmax: ScopeMath.formatVoltage(m.vmax), vmin: ScopeMath.formatVoltage(m.vmin),
+        vmean: ScopeMath.formatVoltage(m.vmean), vrms: ScopeMath.formatVoltage(m.vrms),
+        freq: ScopeMath.formatFreq(m.freqHz), duty: m.dutyPct === null ? '--' : `${m.dutyPct.toFixed(0)} %`,
+        rise: m.riseNs === null ? '--' : ScopeMath.formatTime(m.riseNs)
+      }));
+    }
+  }
+  setText(scopeMeasures, lines.length ? lines.join('\n') : t('scope.measure_none'));
+}
+
 function renderScope() {
   const width = scopeCanvas.width;
   const height = scopeCanvas.height;
@@ -1271,6 +1385,11 @@ function renderScope() {
     document.getElementById('statCh1Vrms').innerText = `${vrms1} Vrms`;
     document.getElementById('statCh1Freq').innerText = `${genFreq} Hz`;
   }
+
+  if (chkCursors.checked) {
+    drawCursors(selCursorCh.value === '2' ? ch2CenterY : ch1CenterY, divX, divY, width, height);
+  }
+  updateScopeReadouts(hasHardwareWave);
 
   requestAnimationFrame(renderScope);
 }

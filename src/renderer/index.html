@@ -347,6 +347,21 @@
             <!-- SIDEBAR CONTROLS FOR SCOPE -->
             <div class="scope-controls-panel">
               <div class="control-box">
+                <h3 data-i18n="scope.measure_title">Messungen & Cursor</h3>
+                <div class="controls-toolbar">
+                  <label><input type="checkbox" id="chkCursors"> <span data-i18n="scope.cursors">Cursor</span></label>
+                  <label><span data-i18n="scope.cursor_channel">Kanal:</span>
+                    <select id="selCursorCh">
+                      <option value="1">CH1</option>
+                      <option value="2">CH2</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="scope-readout" id="scopeCursorReadout"></div>
+                <div class="scope-readout" id="scopeMeasures"></div>
+              </div>
+
+              <div class="control-box">
                 <h3 data-i18n="scope.timebase">Zeitbasis (Time/Div)</h3>
                 <div class="btn-grid-row">
                   <button class="btn-pill" data-timebase="0.5">500µs</button>
@@ -501,6 +516,7 @@
   <script src="../i18n/locales/fr.js"></script>
   <script src="../i18n/locales/en.js"></script>
   <script src="tab_sync.js"></script>
+  <script src="scope_math.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
