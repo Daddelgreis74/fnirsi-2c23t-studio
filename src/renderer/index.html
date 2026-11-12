@@ -28,38 +28,43 @@
       <div class="device-status-bar">
         <div class="status-pill" id="statusPill">
           <span class="status-dot" id="statusDot"></span>
-          <span class="status-text" id="statusText">Suche Gerät...</span>
+          <span class="status-text" id="statusText" data-i18n="header.searching">Suche Gerät...</span>
         </div>
         <div class="device-meta" id="deviceMeta">
-          <span class="meta-item" id="metaHw">HW: Prüfe...</span>
-          <span class="meta-item" id="metaDrive">Laufwerk: --</span>
+          <span class="meta-item" id="metaHw" data-i18n="header.hw_checking">HW: Prüfe...</span>
+          <span class="meta-item" id="metaDrive" data-i18n="header.drive_none">Laufwerk: --</span>
         </div>
-        <button class="btn-subtle" id="btnRefresh" title="Gerät neu scannen">
+        <button class="btn-subtle" id="btnRefresh" title="Gerät neu scannen" data-i18n-title="header.rescan">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
             <path d="M23 4v6h-6"></path>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
           </svg>
         </button>
-        <button class="btn-subtle" id="btnOpenExplorer" title="Geräte-Laufwerk im Explorer öffnen">
+        <button class="btn-subtle" id="btnOpenExplorer" title="Geräte-Laufwerk im Explorer öffnen" data-i18n-title="header.open_drive">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
         </button>
+        <select class="lang-select" id="selLanguage" title="Sprache" data-i18n-title="header.language">
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+        </select>
       </div>
 
       <!-- 3-IN-1 INSTRUMENT SELECTOR -->
       <div class="instrument-switch" id="instrumentSwitch">
         <button class="btn-instrument active" data-tab="dmm">
           <span class="inst-icon">⚡</span>
-          <span class="inst-name">Multimeter</span>
+          <span class="inst-name" data-i18n="inst.multimeter">Multimeter</span>
         </button>
         <button class="btn-instrument" data-tab="scope">
           <span class="inst-icon">🔬</span>
-          <span class="inst-name">Oszilloskop</span>
+          <span class="inst-name" data-i18n="inst.scope">Oszilloskop</span>
         </button>
         <button class="btn-instrument" data-tab="generator">
           <span class="inst-icon">〰️</span>
-          <span class="inst-name">DDS Generator</span>
+          <span class="inst-name" data-i18n="inst.generator">DDS Generator</span>
         </button>
       </div>
     </header>
@@ -76,13 +81,13 @@
             <circle cx="15" cy="14" r="1.5"></circle>
             <path d="M12 17v3"></path>
           </svg>
-          <span>Digital-Multimeter</span>
+          <span data-i18n="nav.dmm">Digital-Multimeter</span>
         </button>
         <button class="nav-item" data-tab="scope">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
           </svg>
-          <span>Oszilloskop & Labor</span>
+          <span data-i18n="nav.scope">Oszilloskop & Labor</span>
         </button>
         <button class="nav-item" data-tab="gallery">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
@@ -90,7 +95,7 @@
             <circle cx="8.5" cy="8.5" r="1.5"></circle>
             <polyline points="21 15 16 10 5 21"></polyline>
           </svg>
-          <span>Screenshots & Wellen</span>
+          <span data-i18n="nav.gallery">Screenshots & Wellen</span>
           <span class="badge-count" id="badgeGalleryCount">0</span>
         </button>
         <button class="nav-item" data-tab="generator">
@@ -115,14 +120,14 @@
         <section class="tab-panel active" id="tab-dmm">
           <div class="panel-header">
             <div>
-              <h2>Digital-Multimeter & Datenlogger</h2>
-              <p class="subtitle">10.000 Counts True-RMS Digitalmultimeter, Echtzeit-Kurvenschreiber & Labor-Protokoll</p>
+              <h2 data-i18n="dmm.title">Digital-Multimeter & Datenlogger</h2>
+              <p class="subtitle" data-i18n="dmm.subtitle">10.000 Counts True-RMS Digitalmultimeter, Echtzeit-Kurvenschreiber & Labor-Protokoll</p>
             </div>
             <div class="controls-toolbar">
-              <button class="btn-action" id="btnDmmSerialConnect" style="background: linear-gradient(135deg, #10b981, #059669); border:none; box-shadow: 0 0 10px rgba(16,185,129,0.3);">● LIVE USB VERBINDEN</button>
+              <button class="btn-action" id="btnDmmSerialConnect" style="background: linear-gradient(135deg, #10b981, #059669); border:none; box-shadow: 0 0 10px rgba(16,185,129,0.3);" data-i18n="dmm.connect">● LIVE USB VERBINDEN</button>
               <button class="btn-action secondary" id="btnDmmRun">LOGGER: STOP</button>
-              <button class="btn-action secondary" id="btnDmmExportCsv">Messreihe als CSV</button>
-              <button class="btn-action secondary" id="btnDmmClearLogger">Zurücksetzen</button>
+              <button class="btn-action secondary" id="btnDmmExportCsv" data-i18n="dmm.export_csv">Messreihe als CSV</button>
+              <button class="btn-action secondary" id="btnDmmClearLogger" data-i18n="dmm.reset">Zurücksetzen</button>
             </div>
           </div>
 
@@ -177,7 +182,7 @@
 
               <!-- DMM FUNCTION KEYS MATRIX -->
               <div class="dmm-functions-box">
-                <div class="dmm-section-title">Messbereiche (Funktionswahl)</div>
+                <div class="dmm-section-title" data-i18n="dmm.ranges">Messbereiche (Funktionswahl)</div>
                 <div class="dmm-modes-grid">
                   <button class="btn-dmm-mode active" data-mode="DCV" data-unit="V" data-subtype="DC">DC V</button>
                   <button class="btn-dmm-mode" data-mode="ACV" data-unit="V" data-subtype="AC TRMS">AC V</button>
@@ -185,19 +190,19 @@
                   <button class="btn-dmm-mode" data-mode="DCA" data-unit="A" data-subtype="DC">DC A</button>
                   <button class="btn-dmm-mode" data-mode="ACA" data-unit="A" data-subtype="AC TRMS">AC A</button>
                   <button class="btn-dmm-mode" data-mode="MA" data-unit="mA" data-subtype="DC">mA / µA</button>
-                  <button class="btn-dmm-mode" data-mode="RES" data-unit="Ω" data-subtype="RES">Widerstand Ω</button>
-                  <button class="btn-dmm-mode" data-mode="CAP" data-unit="µF" data-subtype="CAP">Kapazität F</button>
-                  <button class="btn-dmm-mode" data-mode="CONT" data-unit="Ω" data-subtype="CONT">Durchgang 🔔</button>
+                  <button class="btn-dmm-mode" data-mode="RES" data-unit="Ω" data-subtype="RES" data-i18n="dmm.mode.res">Widerstand Ω</button>
+                  <button class="btn-dmm-mode" data-mode="CAP" data-unit="µF" data-subtype="CAP" data-i18n="dmm.mode.cap">Kapazität F</button>
+                  <button class="btn-dmm-mode" data-mode="CONT" data-unit="Ω" data-subtype="CONT" data-i18n="dmm.mode.cont">Durchgang 🔔</button>
                   <button class="btn-dmm-mode" data-mode="DIODE" data-unit="V" data-subtype="DIODE">Diode ▶|</button>
-                  <button class="btn-dmm-mode" data-mode="FREQ" data-unit="Hz" data-subtype="FREQ">Frequenz Hz</button>
-                  <button class="btn-dmm-mode" data-mode="TEMP" data-unit="°C" data-subtype="TEMP">Temperatur °C</button>
+                  <button class="btn-dmm-mode" data-mode="FREQ" data-unit="Hz" data-subtype="FREQ" data-i18n="dmm.mode.freq">Frequenz Hz</button>
+                  <button class="btn-dmm-mode" data-mode="TEMP" data-unit="°C" data-subtype="TEMP" data-i18n="dmm.mode.temp">Temperatur °C</button>
                 </div>
 
                 <div class="dmm-softkeys-row">
                   <button class="btn-dmm-soft" id="btnDmmHold">HOLD</button>
                   <button class="btn-dmm-soft" id="btnDmmRel">REL Δ</button>
                   <button class="btn-dmm-soft" id="btnDmmRange">RANGE: AUTO</button>
-                  <button class="btn-dmm-soft" id="btnDmmResetStats">RESET MIN/MAX</button>
+                  <button class="btn-dmm-soft" id="btnDmmResetStats" data-i18n="dmm.reset_minmax">RESET MIN/MAX</button>
                   <button class="btn-dmm-soft active" id="btnDmmBuzzer">BUZZER ON</button>
                 </div>
 
@@ -207,10 +212,10 @@
                     ● LIVE TELEMETRIE AKTIV (COM4)
                   </div>
                   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
-                    <span style="font-size:12px; font-weight:600; color:#94a3b8;">Hardware-Schnittstelle:</span>
-                    <span id="lblDmmHwPort" style="font-size:12px; font-family:'Cascadia Code', monospace; color:#38bdf8;">USB-CDC Seriell</span>
+                    <span style="font-size:12px; font-weight:600; color:#94a3b8;" data-i18n="dmm.hw_interface">Hardware-Schnittstelle:</span>
+                    <span id="lblDmmHwPort" style="font-size:12px; font-family:'Cascadia Code', monospace; color:#38bdf8;" data-i18n="dmm.hw_port">USB-CDC Seriell</span>
                   </div>
-                  <div id="lblDmmHwMsg" style="font-size:11px; color:#64748b; line-height: 1.4;">
+                  <div id="lblDmmHwMsg" style="font-size:11px; color:#64748b; line-height: 1.4;" data-i18n="dmm.hw_msg_default">
                     Warte auf Messwerte... Schalte das 2C23T auf das Multimeter.
                   </div>
                 </div>
@@ -225,24 +230,24 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
                       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                     </svg>
-                    <span>Echtzeit-Kurvenschreiber (Trendplot)</span>
+                    <span data-i18n="dmm.trend_title">Echtzeit-Kurvenschreiber (Trendplot)</span>
                   </div>
                   <div class="chart-options">
-                    <label>Abtastrate:
+                    <label><span data-i18n="dmm.sample_rate">Abtastrate:</span>
                       <select id="selDmmRate">
                         <option value="100">100 ms (10 Hz)</option>
                         <option value="250" selected>250 ms (4 Hz)</option>
                         <option value="500">500 ms (2 Hz)</option>
-                        <option value="1000">1 Sekunde</option>
-                        <option value="2000">2 Sekunden</option>
+                        <option value="1000" data-i18n="dmm.rate_1s">1 Sekunde</option>
+                        <option value="2000" data-i18n="dmm.rate_2s">2 Sekunden</option>
                       </select>
                     </label>
-                    <label>Zeitfenster:
+                    <label><span data-i18n="dmm.window">Zeitfenster:</span>
                       <select id="selDmmWindow">
-                        <option value="30">30 Sek.</option>
-                        <option value="60" selected>60 Sek.</option>
-                        <option value="300">5 Min.</option>
-                        <option value="900">15 Min.</option>
+                        <option value="30" data-i18n="dmm.window_30">30 Sek.</option>
+                        <option value="60" selected data-i18n="dmm.window_60">60 Sek.</option>
+                        <option value="300" data-i18n="dmm.window_5m">5 Min.</option>
+                        <option value="900" data-i18n="dmm.window_15m">15 Min.</option>
                       </select>
                     </label>
                   </div>
@@ -256,18 +261,18 @@
               <!-- LOGGED VALUES TABLE -->
               <div class="dmm-table-box">
                 <div class="dmm-table-header">
-                  <span>Aufgezeichnete Messpunkte (<b id="lblLogCount">0</b> Einträge)</span>
-                  <span class="dmm-table-hint">Scrollbar • Automatische Protokollierung</span>
+                  <span><span data-i18n="dmm.log_title">Aufgezeichnete Messpunkte</span> (<b id="lblLogCount">0</b> <span data-i18n="dmm.log_entries">Einträge</span>)</span>
+                  <span class="dmm-table-hint" data-i18n="dmm.log_hint">Scrollbar • Automatische Protokollierung</span>
                 </div>
                 <div class="dmm-table-scroll">
                   <table class="dmm-table" id="dmmLogTable">
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>Uhrzeit</th>
-                        <th>Modus</th>
-                        <th>Messwert</th>
-                        <th>Einheit</th>
+                        <th data-i18n="dmm.col_time">Uhrzeit</th>
+                        <th data-i18n="dmm.col_mode">Modus</th>
+                        <th data-i18n="dmm.col_value">Messwert</th>
+                        <th data-i18n="dmm.col_unit">Einheit</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -284,22 +289,22 @@
               <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="font-size:14px; margin:0; display:flex; align-items:center; gap:8px;">
                   <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
-                  Live Telemetrie-Logger &amp; Serial Monitor (Raw Datenstrom)
+                  <span data-i18n="dmm.raw_title">Live Telemetrie-Logger &amp; Serial Monitor (Raw Datenstrom)</span>
                 </h3>
                 <div style="display:flex; gap:8px; align-items:center;">
                   <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="checkbox" id="chkDmmLogAutoScroll" checked> Auto-Scroll
+                    <input type="checkbox" id="chkDmmLogAutoScroll" checked> <span data-i18n="dmm.autoscroll">Auto-Scroll</span>
                   </label>
-                  <button class="btn-action secondary" id="btnDmmCopyRawLog" style="padding:4px 10px; font-size:11px;">Kopieren</button>
-                  <button class="btn-action secondary" id="btnDmmSaveRawLog" style="padding:4px 10px; font-size:11px;">Als .log speichern</button>
-                  <button class="btn-action secondary" id="btnDmmClearRawLog" style="padding:4px 10px; font-size:11px;">Leeren</button>
+                  <button class="btn-action secondary" id="btnDmmCopyRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.copy">Kopieren</button>
+                  <button class="btn-action secondary" id="btnDmmSaveRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.save_log">Als .log speichern</button>
+                  <button class="btn-action secondary" id="btnDmmClearRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.clear">Leeren</button>
                 </div>
               </div>
               <div class="card-body" style="padding:12px;">
                 <div id="txtDmmSerialLog" style="background:#030712; color:#38bdf8; font-family:'Cascadia Code', Consolas, monospace; font-size:12px; height:180px; overflow-y:auto; padding:10px; border-radius:6px; border:1px solid #1f2937; white-space:pre-wrap; line-height:1.5;"></div>
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                  <input type="text" id="inputDmmSerialCmd" placeholder="Manuellen Steuerbefehl an 2C23T senden (z.B. MODE:ACV, MODE:DCV, MODE:RES, MODE:CONT)..." style="flex:1; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:6px 12px; color:#f8fafc; font-family:'Cascadia Code', monospace; font-size:12px;">
-                  <button class="btn-action" id="btnDmmSendSerialCmd" style="padding:6px 16px; font-size:12px; background:linear-gradient(135deg, #0284c7, #0369a1); border:none; cursor:pointer;">Befehl Senden</button>
+                  <input type="text" id="inputDmmSerialCmd" placeholder="Manuellen Steuerbefehl an 2C23T senden (z.B. MODE:ACV, MODE:DCV, MODE:RES, MODE:CONT)..." data-i18n-placeholder="dmm.cmd_placeholder" style="flex:1; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:6px 12px; color:#f8fafc; font-family:'Cascadia Code', monospace; font-size:12px;">
+                  <button class="btn-action" id="btnDmmSendSerialCmd" style="padding:6px 16px; font-size:12px; background:linear-gradient(135deg, #0284c7, #0369a1); border:none; cursor:pointer;" data-i18n="dmm.send_cmd">Befehl Senden</button>
                 </div>
               </div>
             </div>
@@ -309,12 +314,12 @@
         <!-- TAB 1: OSZILLOSKOP & LABOR -->
         <section class="tab-panel" id="tab-scope">
           <div class="panel-header">
-            <h2>Dual-Channel Oszilloskop & Mess-Labor</h2>
+            <h2 data-i18n="scope.title">Dual-Channel Oszilloskop & Mess-Labor</h2>
             <div class="controls-toolbar">
               <label><input type="checkbox" id="chkCh1" checked> <span class="badge-ch1">CH1</span></label>
               <label><input type="checkbox" id="chkCh2" checked> <span class="badge-ch2">CH2</span></label>
-              <label><input type="checkbox" id="chkFft"> <span>FFT Spektrum</span></label>
-              <label><input type="checkbox" id="chkPersist" checked> <span>Phosphor</span></label>
+              <label><input type="checkbox" id="chkFft"> <span data-i18n="scope.fft">FFT Spektrum</span></label>
+              <label><input type="checkbox" id="chkPersist" checked> <span data-i18n="scope.phosphor">Phosphor</span></label>
               <button class="btn-action" id="btnScopeAuto" style="background:#0284c7; margin-right:6px;">AUTO</button>
               <button class="btn-action" id="btnScopeRun">STOP</button>
             </div>
@@ -342,7 +347,7 @@
             <!-- SIDEBAR CONTROLS FOR SCOPE -->
             <div class="scope-controls-panel">
               <div class="control-box">
-                <h3>Zeitbasis (Time/Div)</h3>
+                <h3 data-i18n="scope.timebase">Zeitbasis (Time/Div)</h3>
                 <div class="btn-grid-row">
                   <button class="btn-pill" data-timebase="0.5">500µs</button>
                   <button class="btn-pill active" data-timebase="1">1ms</button>
@@ -352,7 +357,7 @@
               </div>
 
               <div class="control-box">
-                <h3>Spannungsskalierung (Volts/Div)</h3>
+                <h3 data-i18n="scope.voltscale">Spannungsskalierung (Volts/Div)</h3>
                 <div class="channel-volts">
                   <label class="ch1-lbl">CH1: <span id="lblCh1Scale">1.0 V/div</span></label>
                   <input type="range" id="rngCh1Scale" min="0.1" max="5.0" step="0.1" value="1.0">
@@ -362,15 +367,15 @@
               </div>
 
               <div class="control-box">
-                <h3>Signalgenerator Generator-Test</h3>
+                <h3 data-i18n="scope.gentest">Signalgenerator Generator-Test</h3>
                 <div class="sig-presets">
-                  <button class="btn-pill active" data-wave="sine">Sinus</button>
-                  <button class="btn-pill" data-wave="square">Rechteck</button>
-                  <button class="btn-pill" data-wave="tri">Dreieck</button>
-                  <button class="btn-pill" data-wave="ecg">EKG / Puls</button>
+                  <button class="btn-pill active" data-wave="sine" data-i18n="wave.sine">Sinus</button>
+                  <button class="btn-pill" data-wave="square" data-i18n="wave.square">Rechteck</button>
+                  <button class="btn-pill" data-wave="tri" data-i18n="wave.triangle">Dreieck</button>
+                  <button class="btn-pill" data-wave="ecg" data-i18n="wave.ecg_pulse">EKG / Puls</button>
                 </div>
                 <div class="slider-group">
-                  <label>Frequenz: <span id="lblGenFreq">1.0 kHz</span></label>
+                  <label><span data-i18n="scope.frequency">Frequenz:</span> <span id="lblGenFreq">1.0 kHz</span></label>
                   <input type="range" id="rngGenFreq" min="100" max="10000" step="100" value="1000">
                 </div>
               </div>
@@ -382,12 +387,12 @@
         <section class="tab-panel" id="tab-gallery">
           <div class="panel-header">
             <div>
-              <h2>Screenshot & Wellenform Archiv</h2>
-              <p class="subtitle">Automatische Synchronisation mit dem FNIRSI 2C23T Speicher</p>
+              <h2 data-i18n="gallery.title">Screenshot & Wellenform Archiv</h2>
+              <p class="subtitle" data-i18n="gallery.subtitle">Automatische Synchronisation mit dem FNIRSI 2C23T Speicher</p>
             </div>
             <div class="header-actions">
-              <button class="btn-action" id="btnSyncScreenshots">Aktualisieren</button>
-              <button class="btn-action secondary" id="btnOpenScreenshotFolder">Ordner im Explorer</button>
+              <button class="btn-action" id="btnSyncScreenshots" data-i18n="gallery.refresh">Aktualisieren</button>
+              <button class="btn-action secondary" id="btnOpenScreenshotFolder" data-i18n="gallery.open_folder">Ordner im Explorer</button>
             </div>
           </div>
 
@@ -399,8 +404,8 @@
                   <circle cx="8.5" cy="8.5" r="1.5"></circle>
                   <polyline points="21 15 16 10 5 21"></polyline>
                 </svg>
-                <p>Keine Screenshots auf dem 2C23T gefunden.</p>
-                <small>Drücke auf deinem 2C23T lang auf die <b>SAVE</b>-Taste, um eine Aufnahme zu machen!</small>
+                <p data-i18n="gallery.empty">Keine Screenshots auf dem 2C23T gefunden.</p>
+                <small data-i18n-html="gallery.empty_hint">Drücke auf deinem 2C23T lang auf die <b>SAVE</b>-Taste, um eine Aufnahme zu machen!</small>
               </div>
             </div>
 
@@ -409,8 +414,8 @@
               <div class="preview-header">
                 <span id="previewTitle">Bild.bmp</span>
                 <div class="preview-actions">
-                  <button class="btn-action secondary" id="btnSaveScreenshotAs">Als PNG speichern</button>
-                  <button class="btn-action" id="btnOpenInApp">Öffnen</button>
+                  <button class="btn-action secondary" id="btnSaveScreenshotAs" data-i18n="gallery.save_png">Als PNG speichern</button>
+                  <button class="btn-action" id="btnOpenInApp" data-i18n="gallery.open">Öffnen</button>
                 </div>
               </div>
               <div class="preview-img-container">
@@ -424,11 +429,11 @@
         <section class="tab-panel" id="tab-generator">
           <div class="panel-header">
             <div>
-              <h2>Arbitrary Waveform Designer für OpenScope</h2>
-              <p class="subtitle">Erstelle eigene Wellenformen und spiele sie direkt über den DDS-Signalgenerator des 2C23T ab</p>
+              <h2 data-i18n="gen.title">Arbitrary Waveform Designer für OpenScope</h2>
+              <p class="subtitle" data-i18n="gen.subtitle">Erstelle eigene Wellenformen und spiele sie direkt über den DDS-Signalgenerator des 2C23T ab</p>
             </div>
             <div class="header-actions">
-              <button class="btn-action primary" id="btnExportWaveform">Auf 2C23T speichern (.CSV)</button>
+              <button class="btn-action primary" id="btnExportWaveform" data-i18n="gen.export">Auf 2C23T speichern (.CSV)</button>
             </div>
           </div>
 
@@ -436,39 +441,39 @@
             <div class="designer-canvas-box">
               <canvas id="designerCanvas" width="700" height="350"></canvas>
               <div class="designer-canvas-footer">
-                <span>Punkte: <b id="lblPointsCount">64 Punkte</b></span>
-                <span>Amplitude: <b id="lblMaxAmplitude">2500 mV (2.5V max)</b></span>
-                <span class="hint">Zeichne mit der Maus oder wähle eine mathematische Form</span>
+                <span><span data-i18n="gen.points_label">Punkte:</span> <b id="lblPointsCount">64 Punkte</b></span>
+                <span><span data-i18n="gen.amplitude">Amplitude:</span> <b id="lblMaxAmplitude">2500 mV (2.5V max)</b></span>
+                <span class="hint" data-i18n="gen.hint">Zeichne mit der Maus oder wähle eine mathematische Form</span>
               </div>
             </div>
 
             <div class="designer-sidebar">
               <div class="control-box">
-                <h3>Wellenform-Vorlagen</h3>
+                <h3 data-i18n="gen.presets">Wellenform-Vorlagen</h3>
                 <div class="wave-presets-grid">
-                  <button class="btn-preset active" data-preset="sine">Sinus</button>
-                  <button class="btn-preset" data-preset="halfsine">Halb-Sinus</button>
-                  <button class="btn-preset" data-preset="square">Rechteck</button>
-                  <button class="btn-preset" data-preset="sawtooth">Sägezahn</button>
-                  <button class="btn-preset" data-preset="triangle">Dreieck</button>
-                  <button class="btn-preset" data-preset="ecg">EKG Herzschlag</button>
-                  <button class="btn-preset" data-preset="exp">Exponential</button>
-                  <button class="btn-preset" data-preset="noise">Rauschen</button>
+                  <button class="btn-preset active" data-preset="sine" data-i18n="wave.sine">Sinus</button>
+                  <button class="btn-preset" data-preset="halfsine" data-i18n="gen.halfsine">Halb-Sinus</button>
+                  <button class="btn-preset" data-preset="square" data-i18n="wave.square">Rechteck</button>
+                  <button class="btn-preset" data-preset="sawtooth" data-i18n="gen.sawtooth">Sägezahn</button>
+                  <button class="btn-preset" data-preset="triangle" data-i18n="wave.triangle">Dreieck</button>
+                  <button class="btn-preset" data-preset="ecg" data-i18n="gen.ecg">EKG Herzschlag</button>
+                  <button class="btn-preset" data-preset="exp" data-i18n="gen.exp">Exponential</button>
+                  <button class="btn-preset" data-preset="noise" data-i18n="gen.noise">Rauschen</button>
                 </div>
               </div>
 
               <div class="control-box">
-                <h3>Kurven-Parameter</h3>
+                <h3 data-i18n="gen.params">Kurven-Parameter</h3>
                 <div class="slider-group">
-                  <label>Auflösung: <span id="lblWavePoints">64 Punkte (OpenScope ARBT)</span></label>
+                  <label><span data-i18n="gen.resolution">Auflösung:</span> <span id="lblWavePoints">64 Punkte (OpenScope ARBT)</span></label>
                   <input type="range" id="rngWavePoints" min="32" max="128" step="32" value="64">
                 </div>
                 <div class="slider-group">
-                  <label>Max. Pegel: <span id="lblWaveMv">2500 mV</span></label>
+                  <label><span data-i18n="gen.max_level">Max. Pegel:</span> <span id="lblWaveMv">2500 mV</span></label>
                   <input type="range" id="rngWaveMv" min="500" max="2500" step="100" value="2500">
                 </div>
                 <div class="input-group">
-                  <label>Dateiname auf 2C23T:</label>
+                  <label><span data-i18n="gen.filename">Dateiname auf 2C23T:</span></label>
                   <div class="name-input-wrapper">
                     <input type="text" id="txtWaveName" value="WAVE1" maxlength="8">
                     <span>.CSV</span>
@@ -477,8 +482,8 @@
               </div>
 
               <div class="info-card">
-                <h4>OpenScope DDS Tipp:</h4>
-                <p>Auf dem 2C23T im Menü <b>Signal Generator</b> als Wellenform <b>[ARBT]</b> wählen. Dort kann deine exportierte Datei direkt ausgewählt und ausgegeben werden!</p>
+                <h4 data-i18n="gen.tip_title">OpenScope DDS Tipp:</h4>
+                <p data-i18n-html="gen.tip">Auf dem 2C23T im Menü <b>Signal Generator</b> als Wellenform <b>[ARBT]</b> wählen. Dort kann deine exportierte Datei direkt ausgewählt und ausgegeben werden!</p>
               </div>
             </div>
           </div>
@@ -488,9 +493,13 @@
     </div>
 
     <!-- TOAST -->
-    <div class="toast" id="toast">Meldung</div>
+    <div class="toast" id="toast" data-i18n="toast.default">Meldung</div>
   </div>
 
+  <script src="../i18n/core.js"></script>
+  <script src="../i18n/locales/de.js"></script>
+  <script src="../i18n/locales/fr.js"></script>
+  <script src="../i18n/locales/en.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

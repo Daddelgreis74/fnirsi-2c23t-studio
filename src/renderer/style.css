@@ -1170,3 +1170,15 @@ input[type="range"] {
   color: var(--color-cyan);
   font-weight: 700;
 }
+
+/* Language selector */
+.lang-select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}

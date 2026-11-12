@@ -3,8 +3,8 @@ const assert = require('node:assert');
 const { createTranslator, resolveLanguage, applyTranslations } = require('../src/i18n/core');
 
 const locales = {
-  de: { hello: 'Hallo', count: '{n} Punkte', only_de: 'Nur Deutsch' },
-  fr: { hello: 'Bonjour', count: '{n} points' },
+  de: { hello: 'Hallo', count: '{n} Punkte', only_de: 'Nur Deutsch', bold: 'Fett <b>ja</b>' },
+  fr: { bold: 'Gras <b>oui</b>', hello: 'Bonjour', count: '{n} points' },
   en: { hello: 'Hello', count: '{n} points' }
 };
 
@@ -39,22 +39,24 @@ test('resolveLanguage: saved choice wins, then system locale, then English', () 
 });
 
 function fakeElement(attrs) {
-  const el = { attrs: { ...attrs }, textContent: '' };
+  const el = { attrs: { ...attrs }, textContent: '', innerHTML: '' };
   el.getAttribute = (n) => (n in el.attrs ? el.attrs[n] : null);
   el.setAttribute = (n, v) => { el.attrs[n] = v; };
   return el;
 }
 
-test('applyTranslations fills text, title, placeholder and alt', () => {
+test('applyTranslations fills text, html, title, placeholder and alt', () => {
   const a = fakeElement({ 'data-i18n': 'hello' });
   const b = fakeElement({ 'data-i18n-title': 'hello' });
   const c = fakeElement({ 'data-i18n-placeholder': 'hello' });
   const d = fakeElement({ 'data-i18n-alt': 'hello' });
-  const all = [a, b, c, d];
+  const e = fakeElement({ 'data-i18n-html': 'bold' });
+  const all = [a, b, c, d, e];
   const root = {
     querySelectorAll: (sel) => all.filter((el) => `data-${sel.slice(6, -1)}` in el.attrs)
   };
   applyTranslations(root, createTranslator(locales, 'fr').t);
+  assert.strictEqual(e.innerHTML, 'Gras <b>oui</b>');
   assert.strictEqual(a.textContent, 'Bonjour');
   assert.strictEqual(b.attrs.title, 'Bonjour');
   assert.strictEqual(c.attrs.placeholder, 'Bonjour');

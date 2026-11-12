@@ -1,5 +1,14 @@
 // FNIRSI 2C23T Studio - Core Application Logic
 
+// i18n: German is the source language; the saved choice, then the system locale, picks the start language.
+const LANGUAGES = ['de', 'fr', 'en'];
+const DATE_LOCALES = { de: 'de-DE', fr: 'fr-FR', en: 'en-GB' };
+const translator = I18nCore.createTranslator(
+  I18nLocales,
+  I18nCore.resolveLanguage(localStorage.getItem('language'), navigator.language, LANGUAGES)
+);
+const t = translator.t;
+
 let currentDeviceStatus = null;
 let scopeRunning = true;
 let liveScopeWave1 = null;
@@ -71,7 +80,7 @@ instrumentButtons.forEach(btn => {
 
 // Refresh button
 btnRefresh.addEventListener('click', async () => {
-  showToast('Scanne USB-Laufwerke...');
+  showToast(t('toast.scanning'));
   const status = await window.api.getStatus();
   updateDeviceUI(status);
 });
@@ -80,7 +89,7 @@ btnOpenExplorer.addEventListener('click', async () => {
   if (currentDeviceStatus && currentDeviceStatus.driveLetter) {
     await window.api.openInExplorer(currentDeviceStatus.driveLetter);
   } else {
-    showToast('Kein 2C23T Laufwerk aktiv');
+    showToast(t('toast.no_drive'));
   }
 });
 
@@ -91,22 +100,22 @@ function updateDeviceUI(status) {
 
   if (!status.connected) {
     statusPill.classList.add('offline');
-    statusText.innerText = 'Kein 2C23T erkannt';
+    statusText.innerText = t('status.none');
     metaHw.innerText = 'HW: --';
-    metaDrive.innerText = 'Laufwerk: --';
+    metaDrive.innerText = t('header.drive_none');
     return;
   }
 
   if (status.mode === 'BOOTLOADER') {
     statusPill.classList.add('bootloader');
-    statusText.innerText = 'BootLoader Modus (Bereit)';
+    statusText.innerText = t('status.bootloader');
     metaHw.innerText = 'IAP Bootloader';
-    metaDrive.innerText = `Laufwerk: ${status.driveLetter}`;
+    metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
   } else {
     statusPill.classList.add('online');
-    statusText.innerText = status.firmwareVersion || 'Verbunden';
+    statusText.innerText = status.firmwareVersion || t('status.connected');
     metaHw.innerText = status.hwVersion;
-    metaDrive.innerText = `Laufwerk: ${status.driveLetter}`;
+    metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
 
     if (status.bootloaderCrc) {
       document.getElementById('valBootloaderCrc').innerText = status.bootloaderCrc;
@@ -250,7 +259,7 @@ btnDmmHold?.addEventListener('click', () => {
   dmmHold = !dmmHold;
   btnDmmHold.classList.toggle('active', dmmHold);
   tagDmmHold.classList.toggle('active', dmmHold);
-  showToast(dmmHold ? 'HOLD: Messwert eingefroren' : 'HOLD: Deaktiviert');
+  showToast(t(dmmHold ? 'toast.hold_on' : 'toast.hold_off'));
 });
 
 btnDmmRel?.addEventListener('click', () => {
@@ -261,23 +270,27 @@ btnDmmRel?.addEventListener('click', () => {
   if (dmmRel) {
     const cur = parseFloat(dmmValueEl.innerText) || 0;
     dmmRelBaseline = cur;
-    showToast(`REL Δ: Nullpunkt auf ${cur} ${dmmUnit} gesetzt`);
+    showToast(t('toast.rel_on', { value: cur, unit: dmmUnit }));
   } else {
     dmmRelBaseline = 0;
-    showToast('REL Δ: Deaktiviert');
+    showToast(t('toast.rel_off'));
   }
 });
+
+function renderDmmRange() {
+  if (btnDmmRange) btnDmmRange.innerText = t(dmmAuto ? 'dmm.range_auto' : 'dmm.range_man');
+}
 
 btnDmmRange?.addEventListener('click', () => {
   dmmAuto = !dmmAuto;
   tagDmmAuto.classList.toggle('active', dmmAuto);
-  btnDmmRange.innerText = dmmAuto ? 'RANGE: AUTO' : 'RANGE: MAN';
+  renderDmmRange();
   btnDmmRange.classList.toggle('active', !dmmAuto);
 });
 
 btnDmmResetStats?.addEventListener('click', () => {
   resetDmmStats();
-  showToast('Statistiken zurückgesetzt');
+  showToast(t('toast.stats_reset'));
 });
 
 btnDmmBuzzer?.addEventListener('click', () => {
@@ -286,7 +299,7 @@ btnDmmBuzzer?.addEventListener('click', () => {
   tagDmmBuzzer.classList.toggle('active', dmmBuzzerEnabled);
   btnDmmBuzzer.innerText = dmmBuzzerEnabled ? 'BUZZER ON' : 'BUZZER OFF';
   if (!dmmBuzzerEnabled) stopBuzzer();
-  showToast(dmmBuzzerEnabled ? 'Durchgangs-Buzzer aktiv' : 'Buzzer stummgeschaltet');
+  showToast(t(dmmBuzzerEnabled ? 'toast.buzzer_on' : 'toast.buzzer_off'));
 });
 
 // Logger Controls
@@ -294,7 +307,7 @@ btnDmmRun?.addEventListener('click', () => {
   dmmLoggerRunning = !dmmLoggerRunning;
   btnDmmRun.innerText = dmmLoggerRunning ? 'LOGGER: STOP' : 'LOGGER: START';
   btnDmmRun.style.color = dmmLoggerRunning ? '' : '#10b981';
-  showToast(dmmLoggerRunning ? 'Messwert-Schreiber fortgesetzt' : 'Messwert-Schreiber pausiert');
+  showToast(t(dmmLoggerRunning ? 'toast.logger_resumed' : 'toast.logger_paused'));
 });
 
 btnDmmClearLogger?.addEventListener('click', () => {
@@ -304,7 +317,7 @@ btnDmmClearLogger?.addEventListener('click', () => {
   if (lblLogCount) lblLogCount.innerText = '0';
   resetDmmStats();
   renderDmmCanvas();
-  showToast('Datenlogger geleert');
+  showToast(t('toast.logger_cleared'));
 });
 
 selDmmRate?.addEventListener('change', (e) => {
@@ -320,7 +333,7 @@ selDmmWindow?.addEventListener('change', (e) => {
 // CSV Export
 btnDmmExportCsv?.addEventListener('click', async () => {
   if (dmmHistory.length === 0) {
-    showToast('Keine Messdaten zum Exportieren vorhanden');
+    showToast(t('toast.no_export'));
     return;
   }
 
@@ -332,7 +345,7 @@ btnDmmExportCsv?.addEventListener('click', async () => {
   const filename = `DMM_Messung_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
   const res = await window.api.saveCsv(filename, csv);
   if (res && res.success) {
-    showToast(`Messreihe gespeichert in: ${res.filePath}`);
+    showToast(t('toast.csv_saved', { path: res.filePath }));
   }
 });
 
@@ -346,6 +359,8 @@ const lblDmmHwMsg = document.getElementById("lblDmmHwMsg");
 let serialPort = null;
 let serialReader = null;
 let isLiveSerialConnected = false;
+let liveSerialPort = null;
+let serialUiShown = false;
 // Apply Reading to OLED UI, Stats & Logger
 function applyDmmReadingToUi(reading) {
   const now = new Date();
@@ -459,9 +474,9 @@ function renderDmmCanvas() {
     dmmCtx.font = "13px \"Cascadia Code\", Consolas, monospace";
     dmmCtx.textAlign = "center";
     if (isLiveSerialConnected) {
-      dmmCtx.fillText("Warte auf Messdaten vom 2C23T Multimeter...", w / 2, h / 2);
+      dmmCtx.fillText(t('canvas.waiting'), w / 2, h / 2);
     } else {
-      dmmCtx.fillText("Keine Live-Verbindung • Bitte oben auf \"LIVE USB VERBINDEN\" klicken", w / 2, h / 2);
+      dmmCtx.fillText(t('canvas.no_live'), w / 2, h / 2);
     }
     dmmCtx.textAlign = "left";
     return;
@@ -557,6 +572,8 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 
 function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
+  liveSerialPort = port;
+  serialUiShown = true;
   if (connected) {
     if (tagDmmLive) {
       tagDmmLive.innerText = 'LIVE USB';
@@ -565,29 +582,29 @@ function updateSerialConnectionUI(connected, port) {
       tagDmmLive.style.background = 'rgba(16, 185, 129, 0.15)';
     }
     if (btnDmmSerialConnect) {
-      btnDmmSerialConnect.innerText = '● LIVE NEU VERBINDEN';
+      btnDmmSerialConnect.innerText = t('dmm.reconnect');
       btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
       btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
     if (boxDmmLiveStatus) {
       boxDmmLiveStatus.style.display = 'block';
-      boxDmmLiveStatus.innerText = `● LIVE TELEMETRIE AKTIV (${port || 'COM4'})`;
+      boxDmmLiveStatus.innerText = t('dmm.live_active', { port: port || 'COM4' });
     }
-    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Live-Messwerte werden empfangen.';
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_live');
   } else {
     if (tagDmmLive) {
-      tagDmmLive.innerText = 'WARTE AUF GERÄT';
+      tagDmmLive.innerText = t('dmm.live_waiting');
       tagDmmLive.style.borderColor = '#64748b';
       tagDmmLive.style.color = '#94a3b8';
       tagDmmLive.style.background = '';
     }
     if (btnDmmSerialConnect) {
-      btnDmmSerialConnect.innerText = '● LIVE USB VERBINDEN';
+      btnDmmSerialConnect.innerText = t('dmm.connect');
       btnDmmSerialConnect.style.background = 'linear-gradient(135deg, #10b981, #059669)';
       btnDmmSerialConnect.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.3)';
     }
     if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
-    if (lblDmmHwMsg) lblDmmHwMsg.innerText = 'Warte auf Verbindung... Gerät anstecken und auf DMM stellen.';
+    if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_waiting');
   }
 }
 
@@ -989,30 +1006,30 @@ inputDmmSerialCmd?.addEventListener('keydown', (e) => {
 btnDmmCopyRawLog?.addEventListener('click', () => {
   const text = rawSerialLogLines.join('\r\n');
   navigator.clipboard.writeText(text);
-  showToast('Serial-Log in Zwischenablage kopiert');
+  showToast(t('toast.serial_copied'));
 });
 
 btnDmmClearRawLog?.addEventListener('click', () => {
   rawSerialLogLines = [];
   if (txtDmmSerialLog) txtDmmSerialLog.innerHTML = '';
-  showToast('Serial-Log geleert');
+  showToast(t('toast.serial_cleared'));
 });
 
 btnDmmSaveRawLog?.addEventListener('click', async () => {
   if (rawSerialLogLines.length === 0) {
-    showToast('Keine Log-Einträge vorhanden');
+    showToast(t('toast.serial_empty'));
     return;
   }
   const filename = `DMM_Serial_Log_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
   const content = rawSerialLogLines.join('\r\n');
   const res = await window.api.saveCsv(filename, content);
   if (res && res.success) {
-    showToast(`Serial-Log gespeichert: ${res.filePath}`);
+    showToast(t('toast.serial_saved', { path: res.filePath }));
   }
 });
 
 btnDmmSerialConnect?.addEventListener('click', async () => {
-  showToast('Suche & verbinde 2C23T COM-Port...');
+  showToast(t('toast.serial_connecting'));
   if (window.api && window.api.reconnectSerial) {
     await window.api.reconnectSerial();
   }
@@ -1128,10 +1145,10 @@ function renderScope() {
   scopeCtx.font = '11px Cascadia Code, monospace';
   if (hasHardwareWave) {
     scopeCtx.fillStyle = '#10b981';
-    scopeCtx.fillText(`● HARDWARE LIVE TELEMETRIE [${liveScopeMeta.tb} | CH1:${liveScopeMeta.v1} | CH2:${liveScopeMeta.v2}]`, 14, height - 12);
+    scopeCtx.fillText(t('scope.live_badge', { tb: liveScopeMeta.tb, v1: liveScopeMeta.v1, v2: liveScopeMeta.v2 }), 14, height - 12);
   } else {
     scopeCtx.fillStyle = '#64748b';
-    scopeCtx.fillText('○ SIMULATOR MODUS (Warte auf USB Telemetrie...)', 14, height - 12);
+    scopeCtx.fillText(t('scope.sim_badge'), 14, height - 12);
   }
 
   const showCh1 = document.getElementById('chkCh1').checked;
@@ -1284,7 +1301,7 @@ async function loadScreenshots() {
     list.forEach(item => {
       const card = document.createElement('div');
       card.className = 'gallery-card';
-      const dateStr = new Date(item.mtime).toLocaleString('de-DE');
+      const dateStr = new Date(item.mtime).toLocaleString(DATE_LOCALES[translator.lang]);
       card.innerHTML = `
         <img class="gallery-thumb" src="${item.previewBase64}" alt="${item.filename}">
         <div class="gallery-card-meta">
@@ -1321,7 +1338,7 @@ function showScreenshotPreview(item) {
 
 document.getElementById('btnSyncScreenshots').addEventListener('click', () => {
   loadScreenshots();
-  showToast('Screenshots synchronisiert!');
+  showToast(t('toast.synced'));
 });
 
 document.getElementById('btnOpenScreenshotFolder').addEventListener('click', () => {
@@ -1435,10 +1452,14 @@ document.querySelectorAll('.btn-preset').forEach(btn => {
   });
 });
 
+function renderWavePointsLabels() {
+  document.getElementById('lblWavePoints').innerText = t('gen.points', { n: wavePoints });
+  document.getElementById('lblPointsCount').innerText = t('gen.points', { n: wavePoints });
+}
+
 document.getElementById('rngWavePoints').addEventListener('input', (e) => {
   wavePoints = parseInt(e.target.value);
-  document.getElementById('lblWavePoints').innerText = `${wavePoints} Punkte`;
-  document.getElementById('lblPointsCount').innerText = `${wavePoints} Punkte`;
+  renderWavePointsLabels();
   initWavePreset(activeWavePreset);
 });
 
@@ -1477,8 +1498,36 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
   const name = document.getElementById('txtWaveName').value.trim() || 'WAVE1';
   try {
     const res = await window.api.saveWaveformCsv(name, customPoints);
-    showToast(`Wellenform ${res.name} erfolgreich auf 2C23T gespeichert!`);
+    showToast(t('toast.wave_saved', { name: res.name }));
   } catch (err) {
-    alert(err.message || 'Fehler beim Speichern');
+    alert(err.message || t('error.save'));
   }
 });
+
+// ==========================================
+// LANGUAGE SELECTOR
+// ==========================================
+const selLanguage = document.getElementById('selLanguage');
+
+// Re-renders every text that JS wrote itself (state-dependent), after the static data-i18n texts.
+function refreshDynamicTexts() {
+  if (currentDeviceStatus) updateDeviceUI(currentDeviceStatus);
+  if (serialUiShown) updateSerialConnectionUI(isLiveSerialConnected, liveSerialPort);
+  renderDmmRange();
+  renderWavePointsLabels();
+  renderDmmCanvas();
+  if (document.getElementById('tab-gallery').classList.contains('active')) loadScreenshots();
+}
+
+function applyLanguage(lang) {
+  translator.setLang(lang);
+  localStorage.setItem('language', translator.lang);
+  document.documentElement.lang = translator.lang;
+  selLanguage.value = translator.lang;
+  window.api.setLanguage(translator.lang);
+  I18nCore.applyTranslations(document, t);
+  refreshDynamicTexts();
+}
+
+selLanguage.addEventListener('change', () => applyLanguage(selLanguage.value));
+applyLanguage(translator.lang);

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const deviceManager = require('./device_manager');
 const serialManager = require('./serial_manager');
+const i18n = require('./i18n/main');
 
 let mainWindow = null;
 let pollTimer = null;
@@ -179,11 +180,13 @@ ipcMain.handle('system:open-file', async (_event, filePath) => {
   return false;
 });
 
+ipcMain.handle('i18n:set-language', (_event, lang) => i18n.setLang(lang));
+
 ipcMain.handle('system:save-csv', async (_event, { defaultName, content }) => {
   const res = await dialog.showSaveDialog(mainWindow, {
-    title: 'DMM Messreihe speichern',
+    title: i18n.t('main.save_csv_title'),
     defaultPath: defaultName || 'dmm_measurements.csv',
-    filters: [{ name: 'CSV (Trennzeichen-getrennt)', extensions: ['csv'] }]
+    filters: [{ name: i18n.t('main.csv_filter'), extensions: ['csv'] }]
   });
   if (!res.canceled && res.filePath) {
     fs.writeFileSync(res.filePath, content, 'utf8');
