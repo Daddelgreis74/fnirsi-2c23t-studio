@@ -53,6 +53,6 @@ test('captureToCsv writes time and millivolts per enabled channel', () => {
   assert.strictEqual(rows.length, 3);
   assert.strictEqual(rows[1], '0;0');
   // 2 samples over the screen's 12 divisions of 1 ms: second sample at 12 ms,
-  // 127 counts * 8 * 1000 / 255 mV
-  assert.strictEqual(rows[2], `12000000;${String((127 * 8 * 1000 / 255).toFixed(1)).replace('.', ',')}`);
+  // 127 counts * 754 * 1000 / 20000 mV
+  assert.strictEqual(rows[2], `12000000;${String((127 * 754 * 1000 / 20000).toFixed(1)).replace('.', ',')}`);
 });

@@ -28,18 +28,18 @@ test('parseTimebaseNs understands the firmware chip labels', () => {
   assert.strictEqual(M.parseTimebaseNs('x'), null);
 });
 
-test('rawToMv follows the device scaling (8 divisions over 255 counts)', () => {
+test('rawToMv follows the device scaling (754/20000 per count and V/div)', () => {
   assert.strictEqual(M.rawToMv(128, 1000), 0);
-  near(M.rawToMv(255, 1000), 127 * 8 * 1000 / 255, 0.01);
-  near(M.rawToMv(0, 500), -128 * 8 * 500 / 255, 0.01);
+  near(M.rawToMv(255, 1000), 127 * 754 * 1000 / 20000, 0.01);
+  near(M.rawToMv(0, 500), -128 * 754 * 500 / 20000, 0.01);
 });
 
 test('measureWave on a 500 Hz sine', () => {
   const s = wave((t) => 128 + 64 * Math.sin(2 * Math.PI * 500 * t), 1e6);
   const m = M.measureWave(s, 1000, 1e6);
-  near(m.vpp, 2 * 64 * 8 * 1000 / 255, 80, 'vpp');
+  near(m.vpp, 2 * 64 * 754 * 1000 / 20000, 80, 'vpp');
   near(m.vmean, 0, 40, 'mean');
-  near(m.vrms, (64 * 8 * 1000 / 255) / Math.SQRT2, 40, 'rms');
+  near(m.vrms, (64 * 754 * 1000 / 20000) / Math.SQRT2, 40, 'rms');
   near(m.freqHz, 500, 10, 'freq');
   near(m.dutyPct, 50, 5, 'duty');
 });
@@ -49,8 +49,8 @@ test('measureWave on a 25% duty square wave with a DC offset', () => {
   const m = M.measureWave(s, 500, 1e6);
   near(m.freqHz, 1000, 20, 'freq');
   near(m.dutyPct, 25, 4, 'duty');
-  near(m.vmax, (160 - 128) * 8 * 500 / 255, 0.01, 'vmax');
-  near(m.vmin, (96 - 128) * 8 * 500 / 255, 0.01, 'vmin');
+  near(m.vmax, (160 - 128) * 754 * 500 / 20000, 0.01, 'vmax');
+  near(m.vmin, (96 - 128) * 754 * 500 / 20000, 0.01, 'vmin');
 });
 
 test('measureWave rise time of a linear ramp edge', () => {

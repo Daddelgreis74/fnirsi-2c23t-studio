@@ -11,6 +11,9 @@
   const Y_DIVS = 8;
   const RAW_ZERO = 128;
   const RAW_FULL = 255;
+  // Numerator and denominator of the firmware conversion (see rawToMv).
+  const RAW_MV_NUM = 754;
+  const RAW_MV_DEN = 20000;
 
   // Firmware chip labels: volts per division "20M" / "1V" and time per division "50N" / "1M" / "5S".
   function parseVdivMv(label) {
@@ -26,9 +29,14 @@
     return Number(m[1]) * unit;
   }
 
-  // Same scaling as the device: Y_DIVS divisions over the 0..255 raw range.
+  // Same scaling as the device. The firmware converts through a per-range
+  // calibration code (scope_raw_span_mv, src/ui.c):
+  //     mv = raw * 754 / range,  with range = 20000 / vdiv_mV
+  // so the full 0..255 raw range spans 754 * 255 / 20000 = 9.61 divisions,
+  // not the 8 that are drawn on screen. Scaling by Y_DIVS instead made every
+  // voltage 20% too low (2698 mV read where the device measured 3318 mV).
   function rawToMv(raw, vdivMv) {
-    return ((raw - RAW_ZERO) * vdivMv * Y_DIVS) / RAW_FULL;
+    return ((raw - RAW_ZERO) * vdivMv * RAW_MV_NUM) / RAW_MV_DEN;
   }
 
   // Below this peak-to-peak span (in raw counts, 32 counts = 1 division) the signal is treated as noise.
