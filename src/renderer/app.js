@@ -70,12 +70,15 @@ function switchTab(target) {
   if (target === 'dmm') renderDmmCanvas();
 }
 
+let deviceModeKnown = false;
+
 // Ask the device to follow the tab the user picked (firmware: MODE:SCOPE|DMM|GEN)
 const DEVICE_MODE_BY_TAB = { dmm: 'DMM', scope: 'SCOPE', generator: 'GEN' };
 function requestDeviceMode(tab) {
   const mode = DEVICE_MODE_BY_TAB[tab];
   if (mode && isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
     window.api.sendDmmCommand('MODE:' + mode);
+    deviceModeKnown = true; // from now on only the device's $MODE answer moves the tab, not stray data frames
   }
 }
 function onTabClick(tab) {
@@ -586,6 +589,7 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 function updateSerialConnectionUI(connected, port) {
   isLiveSerialConnected = connected;
   liveSerialPort = port;
+  if (!connected) deviceModeKnown = false;
   serialUiShown = true;
   if (connected) {
     if (tagDmmLive) {
@@ -852,29 +856,16 @@ function processLiveSerialLine(line) {
   if (!line || typeof line !== 'string') return;
   line = line.trim();
 
-  // Mode announcement
-  if (line.startsWith('$MODE,')) {
-    const parts = line.split(',');
-    if (parts.length >= 2) {
-      const mode = parts[1].trim().toUpperCase();
-      if (mode === 'SCOPE') {
-        switchTab('scope');
-      } else if (mode === 'DMM') {
-        switchTab('dmm');
-      } else if (mode === 'GEN') {
-        switchTab('generator');
-      }
-    }
-    return;
-  }
+  // Tab follows the device (see tab_sync.js): $MODE always, data frames only until the mode is known
+  const info = TabSync.lineInfo(line);
+  const tab = TabSync.tabForLine(info, deviceModeKnown);
+  if (info) deviceModeKnown = true;
+  if (tab) switchTab(tab);
+  if (line.startsWith('$MODE,')) return;
 
   // DMM telemetry
   if (line.startsWith('$DMM,')) {
     processLiveDmmLine(line);
-    const activeTab = document.querySelector('.nav-item.active');
-    if (activeTab && activeTab.dataset.tab === 'scope') {
-      switchTab('dmm');
-    }
     return;
   }
 
@@ -894,11 +885,6 @@ function processLiveSerialLine(line) {
       liveScopeMeta.ch2En = parts[10] === '1';
 
       updateScopeMetadataUI();
-
-      const activeTab = document.querySelector('.nav-item.active');
-      if (activeTab && activeTab.dataset.tab === 'dmm') {
-        switchTab('scope');
-      }
     }
     return;
   }
@@ -921,11 +907,6 @@ function processLiveSerialLine(line) {
         liveScopeWave2 = samples;
       }
       lastScopeWaveTime = Date.now();
-
-      const activeTab = document.querySelector('.nav-item.active');
-      if (activeTab && activeTab.dataset.tab === 'dmm') {
-        switchTab('scope');
-      }
     }
     return;
   }
