@@ -1,0 +1,57 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Windows Binaries
+    runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run syntax and integrity tests
+        run: npm test
+
+      - name: Build Electron executables (NSIS Setup & Portable)
+        run: npx electron-builder --win --publish never
+
+      - name: Upload build artifacts (CI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnirsi-2c23t-studio-windows
+          path: |
+            dist/*.exe
+          retention-days: 14
+
+      - name: Publish Release (Tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
