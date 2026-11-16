@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('api', {
   onDmmLog: (callback) => ipcRenderer.on('dmm:serial-log', (_event, log) => callback(log)),
   reconnectSerial: () => ipcRenderer.invoke('dmm:reconnect-serial'),
   setLanguage: (lang) => ipcRenderer.invoke('i18n:set-language', lang),
-  sendDmmCommand: (cmd) => ipcRenderer.invoke('dmm:send-command', cmd)
+  sendDmmCommand: (cmd) => ipcRenderer.invoke('dmm:send-command', cmd),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  installUpdate: (asset) => ipcRenderer.invoke('updater:install', asset),
+  onUpdateProgress: (callback) => ipcRenderer.on('updater:progress', (_event, percent) => callback(percent))
 });

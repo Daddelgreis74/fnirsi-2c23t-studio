@@ -2191,3 +2191,71 @@ if (btnLiveGenActivateArbt) {
     }
   });
 }
+
+// ==========================================
+// IN-APP GITHUB UPDATER
+// ==========================================
+let pendingUpdateAsset = null;
+let updateDownloading = false;
+const btnCheckUpdates = document.getElementById('btnCheckUpdates');
+
+async function runUpdateCheck(silent = false) {
+  if (!window.api || !window.api.checkForUpdates || updateDownloading) return;
+  if (!silent && btnCheckUpdates) {
+    btnCheckUpdates.innerText = t('updater.checking');
+  }
+  try {
+    const info = await window.api.checkForUpdates();
+    if (info && info.available && info.asset) {
+      pendingUpdateAsset = info.asset;
+      if (btnCheckUpdates) {
+        btnCheckUpdates.innerText = t('updater.install_btn', { version: info.latestVersion });
+        btnCheckUpdates.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        btnCheckUpdates.style.color = '#fff';
+        btnCheckUpdates.style.borderColor = '#10b981';
+      }
+      showToast(t('updater.available', { version: info.latestVersion }), 6000);
+    } else {
+      pendingUpdateAsset = null;
+      if (btnCheckUpdates) {
+        btnCheckUpdates.innerText = t('updater.check');
+      }
+      if (!silent) {
+        showToast(t('updater.up_to_date', { version: info ? info.currentVersion : '1.1.0' }));
+      }
+    }
+  } catch (err) {
+    if (btnCheckUpdates) btnCheckUpdates.innerText = t('updater.check');
+    if (!silent) showToast(t('updater.error', { message: err.message || 'Network' }));
+  }
+}
+
+if (btnCheckUpdates) {
+  btnCheckUpdates.addEventListener('click', async () => {
+    if (updateDownloading) return;
+    if (pendingUpdateAsset && window.api && window.api.installUpdate) {
+      updateDownloading = true;
+      btnCheckUpdates.innerText = t('updater.downloading', { percent: 0 });
+      try {
+        await window.api.installUpdate(pendingUpdateAsset);
+      } catch (err) {
+        updateDownloading = false;
+        showToast(t('updater.error', { message: err.message || 'Install' }));
+        btnCheckUpdates.innerText = t('updater.check');
+      }
+    } else {
+      await runUpdateCheck(false);
+    }
+  });
+}
+
+if (window.api && window.api.onUpdateProgress) {
+  window.api.onUpdateProgress((percent) => {
+    if (btnCheckUpdates && updateDownloading) {
+      btnCheckUpdates.innerText = t('updater.downloading', { percent });
+    }
+  });
+}
+
+// Silent background check 4s after launch
+setTimeout(() => runUpdateCheck(true), 4000);

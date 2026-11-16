@@ -204,5 +204,12 @@
   "toast.shot_saving": "📸 Capture d'écran en cours sur 2C23T...",
   "toast.shot_ok": "📸 Capture enregistrée sur 2C23T !",
   "toast.shot_err": "⚠️ Erreur de capture (mémoire pleine ou protégée)",
-  "toast.arbt_active": "Forme d'onde ARBT (15) activée sur le générateur 2C23T !"
+  "toast.arbt_active": "Forme d'onde ARBT (15) activée sur le générateur 2C23T !",
+  "updater.check": "🔄 Vérifier les mises à jour",
+  "updater.checking": "Recherche de mises à jour...",
+  "updater.up_to_date": "Vous utilisez déjà la dernière version ({version}).",
+  "updater.available": "Mise à jour v{version} disponible !",
+  "updater.install_btn": "⬇ Installer la mise à jour v{version}",
+  "updater.downloading": "Téléchargement... {percent}%",
+  "updater.error": "Échec de la mise à jour : {message}"
 });

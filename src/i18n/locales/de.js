@@ -204,5 +204,12 @@
   "toast.shot_saving": "📸 Screenshot wird auf 2C23T gespeichert...",
   "toast.shot_ok": "📸 Screenshot erfolgreich auf 2C23T gespeichert!",
   "toast.shot_err": "⚠️ Screenshot-Fehler (Speicher voll oder geschützt)",
-  "toast.arbt_active": "Wellenform ARBT (15) auf 2C23T Generator aktiviert!"
+  "toast.arbt_active": "Wellenform ARBT (15) auf 2C23T Generator aktiviert!",
+  "updater.check": "🔄 Update prüfen",
+  "updater.checking": "Suche nach Updates...",
+  "updater.up_to_date": "Du nutzt bereits die aktuellste Version ({version}).",
+  "updater.available": "Update v{version} verfügbar!",
+  "updater.install_btn": "⬇ Update auf v{version} installieren",
+  "updater.downloading": "Lade Update... {percent}%",
+  "updater.error": "Update-Prüfung fehlgeschlagen: {message}"
 });

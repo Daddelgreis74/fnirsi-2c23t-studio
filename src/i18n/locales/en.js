@@ -204,5 +204,12 @@
   "toast.shot_saving": "📸 Saving screenshot on 2C23T...",
   "toast.shot_ok": "📸 Screenshot saved on 2C23T!",
   "toast.shot_err": "⚠️ Screenshot error (storage full or protected)",
-  "toast.arbt_active": "Waveform ARBT (15) activated on 2C23T generator!"
+  "toast.arbt_active": "Waveform ARBT (15) activated on 2C23T generator!",
+  "updater.check": "🔄 Check for updates",
+  "updater.checking": "Checking for updates...",
+  "updater.up_to_date": "You are already on the latest version ({version}).",
+  "updater.available": "Update v{version} available!",
+  "updater.install_btn": "⬇ Install update v{version}",
+  "updater.downloading": "Downloading update... {percent}%",
+  "updater.error": "Update check failed: {message}"
 });

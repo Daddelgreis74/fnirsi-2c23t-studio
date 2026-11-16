@@ -4,6 +4,7 @@ const fs = require('fs');
 const deviceManager = require('./device_manager');
 const serialManager = require('./serial_manager');
 const i18n = require('./i18n/main');
+const updater = require('./updater');
 
 let mainWindow = null;
 let pollTimer = null;
@@ -203,4 +204,22 @@ ipcMain.handle('system:select-directory', async () => {
     return res.filePaths[0];
   }
   return null;
+});
+
+ipcMain.handle('updater:get-version', () => app.getVersion());
+
+ipcMain.handle('updater:check', async () => {
+  return await updater.checkForUpdates(app.getVersion());
+});
+
+ipcMain.handle('updater:install', async (_event, asset) => {
+  return await updater.downloadAndInstall(
+    asset,
+    (percent) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updater:progress', percent);
+      }
+    },
+    app
+  );
 });
