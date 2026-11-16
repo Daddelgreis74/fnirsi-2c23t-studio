@@ -37,6 +37,15 @@ npm test       # tests i18n (clés et paramètres identiques dans toutes les lan
 npm run dist   # installateur Windows + version portable
 ```
 
+## 🤝 Remerciements & Contributeurs
+
+Un immense merci à **[@Renouveaux](https://github.com/Renouveaux)** pour ses contributions majeures qui ont transformé *FNIRSI 2C23T Studio* en un véritable laboratoire de mesure et d'analyse :
+* **Calibration de précision :** Correction de l'échelle horizontale à 12 divisions, de la formule verticale du firmware (`754 / 20000`) et du tracé net sans flou (`shadowBlur`).
+* **Outils d'oscilloscope :** Décodeurs de bus UART, I2C et SPI, curseurs de mesure, historique des captures avec superposition de référence & export CSV, mode XY et trace mathématique `CH1 ± CH2`.
+* **Multilinguisme & qualité :** Architecture i18n complète (allemand, français, anglais) avec 60 tests unitaires automatisés, thème clair, raccourcis clavier et alarme sonore DMM.
+
+Merci également à **[@rosenrot00](https://github.com/rosenrot00)** pour le développement du firmware open-source **[OpenScope-2C23T](https://github.com/rosenrot00/OpenScope-2C23T)**.
+
 ## 📜 Licence
 
 Licence MIT — développé par **Daddelgreis74** (2026).

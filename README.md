@@ -4,7 +4,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-00f2fe.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.0.1-10b981.svg)](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases)
+[![Release](https://img.shields.io/badge/Release-v1.1.0-10b981.svg)](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases)
 
 ---
 
@@ -55,8 +55,8 @@ To add a language, copy `src/i18n/locales/en.js`, translate the values, register
 
 Download the latest version from [GitHub Releases](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases):
 
-* **Installer (NSIS):** `FNIRSI 2C23T Studio Setup 1.0.1.exe` (Desktop Icon & Start Menu Integration)
-* **Portable:** `FNIRSI-2C23T-Studio-Portable-1.0.1.exe` (Single self-contained `.exe`)
+* **Installer (NSIS):** `FNIRSI 2C23T Studio Setup 1.1.0.exe` (Desktop Icon & Start Menu Integration)
+* **Portable:** `FNIRSI-2C23T-Studio-Portable-1.1.0.exe` (Single self-contained `.exe`)
 
 ---
 
@@ -76,6 +76,17 @@ npm start
 # Build Windows Installer and Portable executable
 npm run dist
 ```
+
+---
+
+## 🤝 Danksagung & Mitwirkende (Credits)
+
+Ein ganz besonderer Dank gilt **[@Renouveaux](https://github.com/Renouveaux)** für seine herausragenden Beiträge, mit denen *FNIRSI 2C23T Studio* von einem Telemetrie-Viewer zu einem vollwertigen Mess- und Analyse-Labor gewachsen ist:
+* **Präzisions-Kalibrierung:** Korrektur der horizontalen 12-Division-Skalierung, der vertikalen Firmware-Formel (`754 / 20000`) sowie der scharfen Signal-Darstellung ohne `shadowBlur`.
+* **Oszilloskop-Tooling:** UART-, I2C- und SPI-Bus-Decoder, Mess-Cursor, Capture-Historie mit Referenz-Overlay & CSV-Export sowie XY- und `CH1 ± CH2` Mathe-Modi.
+* **Mehrsprachigkeit & Qualität:** Vollständige i18n-Architektur (Deutsch, Französisch, Englisch) inklusive 60 automatisierter Unit-Tests, Light-Theme, Tastatur-Shortcuts und akustischem DMM-Grenzwert-Alarm.
+
+Vielen Dank ebenfalls an **[@rosenrot00](https://github.com/rosenrot00)** für die Entwicklung der Open-Source-Firmware **[OpenScope-2C23T](https://github.com/rosenrot00/OpenScope-2C23T)**.
 
 ---
 
