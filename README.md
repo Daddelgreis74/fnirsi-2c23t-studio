@@ -42,6 +42,15 @@
 
 ---
 
+## 🌍 Languages
+
+The interface is available in **Deutsch, Français and English**. Pick the language with the selector in the top bar; the choice is remembered (first start: system language, English if it is not supported).
+French documentation: [README.fr.md](README.fr.md).
+
+To add a language, copy `src/i18n/locales/en.js`, translate the values, register the file in `src/renderer/index.html`, `src/i18n/main.js` and `LANGUAGES` in `src/renderer/app.js`, then run `npm test` (it checks that every language has the same keys and placeholders).
+
+---
+
 ## 🚀 Installation & Downloads
 
 Download the latest version from [GitHub Releases](https://github.com/Daddelgreis74/fnirsi-2c23t-studio/releases):

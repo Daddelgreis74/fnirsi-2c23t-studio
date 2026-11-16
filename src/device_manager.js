@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const { t } = require('./i18n/main');
 
 class DeviceManager {
   constructor() {
@@ -9,7 +10,7 @@ class DeviceManager {
       mode: 'DISCONNECTED', // 'DISCONNECTED' | 'OPENSCOPE' | 'STOCK' | 'BOOTLOADER'
       driveLetter: null,
       volumeName: null,
-      hwVersion: 'Unbekannt',
+      hwVersion: 'Unknown',
       bootloaderCrc: null,
       firmwareVersion: null,
       freeSpace: null,
@@ -52,7 +53,7 @@ class DeviceManager {
                   mode: 'BOOTLOADER',
                   driveLetter: root,
                   volumeName: d.VolumeName || 'FNIRSI IAP',
-                  hwVersion: 'BootLoader Mode (Bereit zum Flashen)',
+                  hwVersion: 'BootLoader Mode (ready to flash)',
                   firmwareVersion: 'IAP Bootloader'
                 };
                 break;
@@ -162,7 +163,7 @@ class DeviceManager {
   // Save custom CSV waveform to 2C23T root directory (for OpenScope Arbitrary Gen)
   saveWaveformCsv(filename, pointsArray, maxMv = 2500) {
     if (!this.currentStatus.connected || !this.currentStatus.driveLetter) {
-      throw new Error('Kein FNIRSI 2C23T Laufwerk verbunden!');
+      throw new Error(t('device.no_drive'));
     }
 
     const cleanName = filename.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase().slice(0, 8);
