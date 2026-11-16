@@ -661,7 +661,7 @@ function processLiveDmmLine(line) {
     case 'TEMP':
       detectedMode = 'TEMP';
       subtype = 'TEMP';
-      cleanUnit = '°C';
+      cleanUnit = (rawUnit.includes('F') || rawUnit.includes('DEG F')) ? '°F' : '°C';
       break;
     case 'LIVE':
       detectedMode = 'DCV';
@@ -834,6 +834,33 @@ function processLiveSerialLine(line) {
       } else if (mode === 'GEN') {
         switchTab('generator');
       }
+    }
+    return;
+  }
+
+  // Generator State: $GEN,<run>,<freq>,<wave>,<amp>
+  if (line.startsWith('$GEN,')) {
+    const parts = line.split(',');
+    if (parts.length >= 5) {
+      const running = parts[1].trim() === '1';
+      const freq = parseInt(parts[2].trim(), 10) || 1000;
+      const wave = parseInt(parts[3].trim(), 10) || 0;
+      const amp = parseInt(parts[4].trim(), 10) || 33;
+      updateLiveGenUI(running, freq, wave, amp);
+    }
+    return;
+  }
+
+  // Remote Screenshot response: $SHOT,OK or $SHOT,ERR
+  if (line.startsWith('$SHOT,')) {
+    const status = line.split(',')[1] ? line.split(',')[1].trim() : '';
+    if (status === 'OK') {
+      showToast('📸 Screenshot erfolgreich auf 2C23T gespeichert!');
+      setTimeout(() => {
+        loadScreenshots();
+      }, 1000);
+    } else {
+      showToast('⚠️ Screenshot-Fehler (Speicher voll oder geschützt)');
     }
     return;
   }
@@ -1482,3 +1509,200 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
     alert(err.message || 'Fehler beim Speichern');
   }
 });
+
+// ==========================================
+// OPENSCOPE v2026.11.5 EXTENSIONS
+// ==========================================
+
+// Hardware DDS Live Generator State
+let liveGenRunning = false;
+let liveGenFreq = 1000;
+let liveGenWave = 0;
+let liveGenAmp = 33; // tenths of volt (33 = 3.3V)
+let liveGenDuty = 50;
+
+function updateLiveGenUI(running, freq, wave, amp) {
+  liveGenRunning = running;
+  liveGenFreq = freq;
+  liveGenWave = wave;
+  liveGenAmp = amp;
+
+  const btnToggle = document.getElementById('btnLiveGenToggle');
+  if (btnToggle) {
+    if (running) {
+      btnToggle.innerText = 'OUTPUT: AN';
+      btnToggle.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      btnToggle.style.color = '#fff';
+    } else {
+      btnToggle.innerText = 'OUTPUT: AUS';
+      btnToggle.style.background = '';
+      btnToggle.style.color = '';
+    }
+  }
+
+  const selWave = document.getElementById('selLiveGenWave');
+  if (selWave && wave >= 0 && wave <= 15) {
+    selWave.value = String(wave);
+  }
+
+  const numFreq = document.getElementById('numLiveGenFreq');
+  const lblFreq = document.getElementById('lblLiveGenFreq');
+  if (numFreq) numFreq.value = freq;
+  if (lblFreq) {
+    if (freq >= 1000000) lblFreq.innerText = `${(freq / 1000000).toFixed(3)} MHz`;
+    else if (freq >= 1000) lblFreq.innerText = `${(freq / 1000).toFixed(1)} kHz`;
+    else lblFreq.innerText = `${freq} Hz`;
+  }
+
+  const rngAmp = document.getElementById('rngLiveGenAmp');
+  const lblAmp = document.getElementById('lblLiveGenAmp');
+  if (rngAmp) rngAmp.value = amp;
+  if (lblAmp) lblAmp.innerText = `${(amp / 10).toFixed(1)} V`;
+}
+
+// Wire up Live Gen Controls
+const btnLiveGenToggle = document.getElementById('btnLiveGenToggle');
+if (btnLiveGenToggle) {
+  btnLiveGenToggle.addEventListener('click', () => {
+    liveGenRunning = !liveGenRunning;
+    const cmd = liveGenRunning ? 'GEN:RUN\n' : 'GEN:STOP\n';
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(cmd);
+    }
+    updateLiveGenUI(liveGenRunning, liveGenFreq, liveGenWave, liveGenAmp);
+  });
+}
+
+const selLiveGenWave = document.getElementById('selLiveGenWave');
+if (selLiveGenWave) {
+  selLiveGenWave.addEventListener('change', (e) => {
+    const wave = parseInt(e.target.value, 10);
+    liveGenWave = wave;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`GEN:WAVE:${wave}\n`);
+    }
+  });
+}
+
+const btnLiveGenSetFreq = document.getElementById('btnLiveGenSetFreq');
+const numLiveGenFreq = document.getElementById('numLiveGenFreq');
+if (btnLiveGenSetFreq && numLiveGenFreq) {
+  btnLiveGenSetFreq.addEventListener('click', () => {
+    const hz = Math.max(1, Math.min(2000000, parseInt(numLiveGenFreq.value, 10) || 1000));
+    liveGenFreq = hz;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`GEN:FREQ:${hz}\n`);
+    }
+    const lblFreq = document.getElementById('lblLiveGenFreq');
+    if (lblFreq) {
+      if (hz >= 1000000) lblFreq.innerText = `${(hz / 1000000).toFixed(3)} MHz`;
+      else if (hz >= 1000) lblFreq.innerText = `${(hz / 1000).toFixed(1)} kHz`;
+      else lblFreq.innerText = `${hz} Hz`;
+    }
+  });
+}
+
+document.querySelectorAll('[data-gen-freq]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-gen-freq]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const hz = parseInt(btn.dataset.genFreq, 10);
+    if (numLiveGenFreq) numLiveGenFreq.value = hz;
+    liveGenFreq = hz;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`GEN:FREQ:${hz}\n`);
+    }
+    const lblFreq = document.getElementById('lblLiveGenFreq');
+    if (lblFreq) {
+      if (hz >= 1000000) lblFreq.innerText = `${(hz / 1000000).toFixed(3)} MHz`;
+      else if (hz >= 1000) lblFreq.innerText = `${(hz / 1000).toFixed(1)} kHz`;
+      else lblFreq.innerText = `${hz} Hz`;
+    }
+  });
+});
+
+const rngLiveGenAmp = document.getElementById('rngLiveGenAmp');
+if (rngLiveGenAmp) {
+  rngLiveGenAmp.addEventListener('input', (e) => {
+    const tenths = parseInt(e.target.value, 10);
+    liveGenAmp = tenths;
+    const lblAmp = document.getElementById('lblLiveGenAmp');
+    if (lblAmp) lblAmp.innerText = `${(tenths / 10).toFixed(1)} V`;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`GEN:AMP:${tenths}\n`);
+    }
+  });
+}
+
+const rngLiveGenDuty = document.getElementById('rngLiveGenDuty');
+if (rngLiveGenDuty) {
+  rngLiveGenDuty.addEventListener('input', (e) => {
+    const duty = parseInt(e.target.value, 10);
+    liveGenDuty = duty;
+    const lblDuty = document.getElementById('lblLiveGenDuty');
+    if (lblDuty) lblDuty.innerText = `${duty} %`;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`GEN:DUTY:${duty}\n`);
+    }
+  });
+}
+
+// Remote Keypad
+document.querySelectorAll('.btn-remote-key[data-key]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    const isLong = document.getElementById('chkRemoteLongPress') && document.getElementById('chkRemoteLongPress').checked;
+    const targetKey = isLong ? `${key}_LONG` : key;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(`KEY:${targetKey}\n`);
+      showToast(`Taste: KEY:${targetKey}`);
+    }
+  });
+});
+
+const btnKeypadShot = document.getElementById('btnKeypadShot');
+if (btnKeypadShot) {
+  btnKeypadShot.addEventListener('click', () => {
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand('SHOT\n');
+      showToast('📸 Screenshot wird auf 2C23T gespeichert...');
+    }
+  });
+}
+
+const btnRemoteScreenshot = document.getElementById('btnRemoteScreenshot');
+if (btnRemoteScreenshot) {
+  btnRemoteScreenshot.addEventListener('click', () => {
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand('SHOT\n');
+      showToast('📸 Screenshot wird auf 2C23T gespeichert...');
+    }
+  });
+}
+
+const btnKeypadRunStop = document.getElementById('btnKeypadRunStop');
+if (btnKeypadRunStop) {
+  btnKeypadRunStop.addEventListener('click', () => {
+    scopeRunning = !scopeRunning;
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand(scopeRunning ? 'SCOPE:RUN\n' : 'SCOPE:STOP\n');
+    }
+    const btnScopeRun = document.getElementById('btnScopeRun');
+    if (btnScopeRun) btnScopeRun.innerText = scopeRunning ? 'STOP' : 'RUN';
+  });
+}
+
+// Arbitrary Waveform Quick Play (Tab Generator)
+const btnLiveGenActivateArbt = document.getElementById('btnLiveGenActivateArbt');
+if (btnLiveGenActivateArbt) {
+  btnLiveGenActivateArbt.addEventListener('click', () => {
+    if (window.api && window.api.sendDmmCommand) {
+      window.api.sendDmmCommand('GEN:WAVE:15\n');
+      window.api.sendDmmCommand('GEN:RUN\n');
+      showToast('Wellenform ARBT (15) auf 2C23T Generator aktiviert!');
+      liveGenRunning = true;
+      liveGenWave = 15;
+      updateLiveGenUI(liveGenRunning, liveGenFreq, liveGenWave, liveGenAmp);
+    }
+  });
+}

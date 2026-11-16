@@ -103,7 +103,7 @@
         <div class="sidebar-footer">
           <div class="creator-badge">
             <span>Daddelgreis74 Edition</span>
-            <small>v1.0.0 • 2C23T Companion</small>
+            <small>v1.1.0 • 2C23T Companion</small>
           </div>
         </div>
       </nav>
@@ -361,17 +361,93 @@
                 </div>
               </div>
 
+              <!-- HARDWARE DDS LIVE CONTROL -->
               <div class="control-box">
-                <h3>Signalgenerator Generator-Test</h3>
-                <div class="sig-presets">
-                  <button class="btn-pill active" data-wave="sine">Sinus</button>
-                  <button class="btn-pill" data-wave="square">Rechteck</button>
-                  <button class="btn-pill" data-wave="tri">Dreieck</button>
-                  <button class="btn-pill" data-wave="ecg">EKG / Puls</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <h3 style="margin:0;">DDS Generator (Live)</h3>
+                  <button class="btn-action secondary" id="btnLiveGenToggle" style="padding:4px 10px; font-size:11px;">OUTPUT: AUS</button>
+                </div>
+                <div class="input-group" style="margin-bottom:8px;">
+                  <label style="font-size:11px; color:#94a3b8;">Wellenform:</label>
+                  <select id="selLiveGenWave" style="width:100%; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:4px 8px; color:#f8fafc; font-size:12px;">
+                    <option value="0" selected>0: Sinus</option>
+                    <option value="1">1: Rechteck</option>
+                    <option value="2">2: Sägezahn</option>
+                    <option value="3">3: Halb-Sinus</option>
+                    <option value="4">4: Vollwelle</option>
+                    <option value="5">5: Treppe (+)</option>
+                    <option value="6">6: Treppe (-)</option>
+                    <option value="7">7: Exp. Steigend</option>
+                    <option value="8">8: Exp. Fallend</option>
+                    <option value="9">9: DC Gleichspannung</option>
+                    <option value="10">10: Multi-Audio</option>
+                    <option value="11">11: Senker-Puls</option>
+                    <option value="12">12: Lorentz</option>
+                    <option value="13">13: Dreieck</option>
+                    <option value="14">14: Rauschen</option>
+                    <option value="15">15: ARBT (Benutzerdefiniert)</option>
+                  </select>
+                </div>
+                <div class="slider-group" style="margin-bottom:8px;">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                    <span>Frequenz:</span>
+                    <b id="lblLiveGenFreq" style="color:#38bdf8;">1000 Hz</b>
+                  </div>
+                  <div style="display:flex; gap:6px; margin-top:4px;">
+                    <input type="number" id="numLiveGenFreq" min="1" max="2000000" value="1000" style="flex:1; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:4px 8px; color:#f8fafc; font-size:12px; font-family:'Cascadia Code', monospace;">
+                    <button class="btn-pill" id="btnLiveGenSetFreq" style="padding:4px 8px; font-size:11px;">Setzen</button>
+                  </div>
+                  <div class="sig-presets" style="margin-top:6px; display:flex; gap:4px;">
+                    <button class="btn-pill" data-gen-freq="100">100Hz</button>
+                    <button class="btn-pill active" data-gen-freq="1000">1kHz</button>
+                    <button class="btn-pill" data-gen-freq="10000">10kHz</button>
+                    <button class="btn-pill" data-gen-freq="100000">100kHz</button>
+                  </div>
+                </div>
+                <div class="slider-group" style="margin-bottom:8px;">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                    <span>Amplitude:</span>
+                    <b id="lblLiveGenAmp" style="color:#38bdf8;">3.3 V</b>
+                  </div>
+                  <input type="range" id="rngLiveGenAmp" min="1" max="33" step="1" value="33" style="width:100%;">
                 </div>
                 <div class="slider-group">
-                  <label>Frequenz: <span id="lblGenFreq">1.0 kHz</span></label>
-                  <input type="range" id="rngGenFreq" min="100" max="10000" step="100" value="1000">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                    <span>Duty Cycle:</span>
+                    <b id="lblLiveGenDuty" style="color:#38bdf8;">50 %</b>
+                  </div>
+                  <input type="range" id="rngLiveGenDuty" min="1" max="99" step="1" value="50" style="width:100%;">
+                </div>
+              </div>
+
+              <!-- VIRTUAL REMOTE KEYPAD (FERNBEDIENUNG) -->
+              <div class="control-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <h3 style="margin:0;">Fernbedienung (Keys)</h3>
+                  <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="chkRemoteLongPress"> Lang
+                  </label>
+                </div>
+                <div class="remote-keypad-grid">
+                  <button class="btn-remote-key" data-key="AUTO">AUTO</button>
+                  <button class="btn-remote-key" data-key="MENU">MENU</button>
+                  <button class="btn-remote-key" data-key="MOVE">MOVE</button>
+                  <button class="btn-remote-key" data-key="SAVE">SAVE</button>
+
+                  <button class="btn-remote-key ch1" data-key="CH1">CH1</button>
+                  <button class="btn-remote-key dpad" data-key="UP">▲</button>
+                  <button class="btn-remote-key ch2" data-key="CH2">CH2</button>
+                  <button class="btn-remote-key fn" data-key="F2">F2</button>
+
+                  <button class="btn-remote-key dpad" data-key="LEFT">◀</button>
+                  <button class="btn-remote-key ok" data-key="OK">OK</button>
+                  <button class="btn-remote-key dpad" data-key="RIGHT">▶</button>
+                  <button class="btn-remote-key fn" data-key="F3">F3</button>
+
+                  <button class="btn-remote-key shot" id="btnKeypadShot">📸 SHOT</button>
+                  <button class="btn-remote-key dpad" data-key="DOWN">▼</button>
+                  <button class="btn-remote-key run" id="btnKeypadRunStop">RUN/STOP</button>
+                  <button class="btn-remote-key fn" data-key="F4">F4</button>
                 </div>
               </div>
             </div>
@@ -386,6 +462,7 @@
               <p class="subtitle">Automatische Synchronisation mit dem FNIRSI 2C23T Speicher</p>
             </div>
             <div class="header-actions">
+              <button class="btn-action primary" id="btnRemoteScreenshot">📸 Remote Screenshot (USB)</button>
               <button class="btn-action" id="btnSyncScreenshots">Aktualisieren</button>
               <button class="btn-action secondary" id="btnOpenScreenshotFolder">Ordner im Explorer</button>
             </div>
@@ -428,6 +505,7 @@
               <p class="subtitle">Erstelle eigene Wellenformen und spiele sie direkt über den DDS-Signalgenerator des 2C23T ab</p>
             </div>
             <div class="header-actions">
+              <button class="btn-action" id="btnLiveGenActivateArbt" style="background: linear-gradient(135deg, #0284c7, #0369a1); border:none;">▶ Am 2C23T aktivieren (ARBT)</button>
               <button class="btn-action primary" id="btnExportWaveform">Auf 2C23T speichern (.CSV)</button>
             </div>
           </div>
