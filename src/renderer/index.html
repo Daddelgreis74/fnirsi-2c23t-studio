@@ -55,15 +55,15 @@
       <!-- 3-IN-1 INSTRUMENT SELECTOR -->
       <div class="instrument-switch" id="instrumentSwitch">
         <button class="btn-instrument active" data-tab="dmm">
-          <span class="inst-icon">⚡</span>
+          <span class="inst-dot dmm"></span>
           <span class="inst-name" data-i18n="inst.multimeter">Multimeter</span>
         </button>
         <button class="btn-instrument" data-tab="scope">
-          <span class="inst-icon">🔬</span>
+          <span class="inst-dot scope"></span>
           <span class="inst-name" data-i18n="inst.scope">Oszilloskop</span>
         </button>
         <button class="btn-instrument" data-tab="generator">
-          <span class="inst-icon">〰️</span>
+          <span class="inst-dot gen"></span>
           <span class="inst-name" data-i18n="inst.generator">DDS Generator</span>
         </button>
       </div>
@@ -108,7 +108,7 @@
         <div class="sidebar-footer">
           <div class="creator-badge">
             <span>Daddelgreis74 Edition</span>
-            <small>v1.1.0 • 2C23T Companion</small>
+            <small>v1.2.0 • 2C23T Companion</small>
             <small class="hw-info" id="metaHw" data-i18n="header.hw_checking">HW: Prüfe...</small>
             <button class="btn-pill" id="btnCheckUpdates" data-i18n="updater.check" style="margin-top:6px; width:100%; font-size:11px;">🔄 Update prüfen</button>
           </div>
@@ -448,66 +448,71 @@
               </div>
                 </div>
                 <div class="scope-subpane" data-subpane="dds" hidden>
-                  <div class="control-box scope-pane-body">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                      <h3 style="margin:0;" data-i18n="scope.dds_title">DDS Hardware</h3>
-                      <button class="btn-action secondary" id="btnLiveGenToggle" data-i18n="dds.output_off" style="padding:4px 10px; font-size:11px;">OUTPUT: AUS</button>
+                  <div class="control-box scope-pane-body dds-modern-layout">
+                    <div class="dds-modern-main">
+                      <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+                        <canvas id="ddsPreviewCanvas" width="180" height="58" class="dds-preview-canvas"></canvas>
+                        <div style="flex:1; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                          <div class="input-group">
+                            <label style="font-size:11px; color:#94a3b8;" data-i18n="dds.waveform">Wellenform:</label>
+                            <select id="selLiveGenWave" class="dds-select">
+                              <option value="0" selected>0: Sinus</option>
+                              <option value="1">1: Rechteck</option>
+                              <option value="2">2: Sägezahn</option>
+                              <option value="3">3: Halb-Sinus</option>
+                              <option value="4">4: Vollwelle</option>
+                              <option value="5">5: Treppe (+)</option>
+                              <option value="6">6: Treppe (-)</option>
+                              <option value="7">7: Exp. Steigend</option>
+                              <option value="8">8: Exp. Fallend</option>
+                              <option value="9">9: DC Gleichspannung</option>
+                              <option value="10">10: Multi-Audio</option>
+                              <option value="11">11: Senker-Puls</option>
+                              <option value="12">12: Lorentz</option>
+                              <option value="13">13: Dreieck</option>
+                              <option value="14">14: Rauschen</option>
+                              <option value="15">15: ARBT</option>
+                            </select>
+                          </div>
+                          <div class="slider-group">
+                            <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                              <span data-i18n="scope.frequency">Frequenz:</span>
+                              <b id="lblLiveGenFreq" style="color:#a78bfa;">1000 Hz</b>
+                            </div>
+                            <div style="display:flex; gap:6px; margin-top:4px;">
+                              <input type="number" id="numLiveGenFreq" min="1" max="2000000" value="1000" class="dds-freq-input">
+                              <button class="btn-pill" id="btnLiveGenSetFreq" data-i18n="dds.set" style="padding:4px 8px; font-size:11px;">Setzen</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sig-presets" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+                        <button class="btn-pill" data-gen-freq="100">100 Hz</button>
+                        <button class="btn-pill active" data-gen-freq="1000">1 kHz</button>
+                        <button class="btn-pill" data-gen-freq="10000">10 kHz</button>
+                        <button class="btn-pill" data-gen-freq="100000">100 kHz</button>
+                        <button class="btn-pill" data-gen-freq="1000000">1 MHz</button>
+                      </div>
+                      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="slider-group">
+                          <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                            <span data-i18n="dds.amp">Amplitude:</span>
+                            <b id="lblLiveGenAmp" style="color:#a78bfa;">3.3 V</b>
+                          </div>
+                          <input type="range" id="rngLiveGenAmp" min="1" max="33" step="1" value="33" style="width:100%;">
+                        </div>
+                        <div class="slider-group">
+                          <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
+                            <span data-i18n="dds.duty">Duty Cycle:</span>
+                            <b id="lblLiveGenDuty" style="color:#a78bfa;">50 %</b>
+                          </div>
+                          <input type="range" id="rngLiveGenDuty" min="1" max="99" step="1" value="50" style="width:100%;">
+                        </div>
+                      </div>
                     </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items:end;">
-                      <div class="input-group">
-                        <label style="font-size:11px; color:#94a3b8;" data-i18n="dds.waveform">Wellenform:</label>
-                        <select id="selLiveGenWave" style="width:100%; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:4px 8px; color:#f8fafc; font-size:12px;">
-                          <option value="0" selected>0: Sinus</option>
-                          <option value="1">1: Rechteck</option>
-                          <option value="2">2: Sägezahn</option>
-                          <option value="3">3: Halb-Sinus</option>
-                          <option value="4">4: Vollwelle</option>
-                          <option value="5">5: Treppe (+)</option>
-                          <option value="6">6: Treppe (-)</option>
-                          <option value="7">7: Exp. Steigend</option>
-                          <option value="8">8: Exp. Fallend</option>
-                          <option value="9">9: DC Gleichspannung</option>
-                          <option value="10">10: Multi-Audio</option>
-                          <option value="11">11: Senker-Puls</option>
-                          <option value="12">12: Lorentz</option>
-                          <option value="13">13: Dreieck</option>
-                          <option value="14">14: Rauschen</option>
-                          <option value="15">15: ARBT</option>
-                        </select>
-                      </div>
-                      <div class="slider-group">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
-                          <span data-i18n="scope.frequency">Frequenz:</span>
-                          <b id="lblLiveGenFreq" style="color:#38bdf8;">1000 Hz</b>
-                        </div>
-                        <div style="display:flex; gap:6px; margin-top:4px;">
-                          <input type="number" id="numLiveGenFreq" min="1" max="2000000" value="1000" style="flex:1; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:4px 8px; color:#f8fafc; font-size:12px; font-family:'Cascadia Code', monospace;">
-                          <button class="btn-pill" id="btnLiveGenSetFreq" data-i18n="dds.set" style="padding:4px 8px; font-size:11px;">Setzen</button>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="sig-presets" style="margin-top:8px; display:flex; gap:6px;">
-                      <button class="btn-pill" data-gen-freq="100">100 Hz</button>
-                      <button class="btn-pill active" data-gen-freq="1000">1 kHz</button>
-                      <button class="btn-pill" data-gen-freq="10000">10 kHz</button>
-                      <button class="btn-pill" data-gen-freq="100000">100 kHz</button>
-                      <button class="btn-pill" data-gen-freq="1000000">1 MHz</button>
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
-                      <div class="slider-group">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
-                          <span data-i18n="dds.amp">Amplitude:</span>
-                          <b id="lblLiveGenAmp" style="color:#38bdf8;">3.3 V</b>
-                        </div>
-                        <input type="range" id="rngLiveGenAmp" min="1" max="33" step="1" value="33" style="width:100%;">
-                      </div>
-                      <div class="slider-group">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8;">
-                          <span data-i18n="dds.duty">Duty Cycle:</span>
-                          <b id="lblLiveGenDuty" style="color:#38bdf8;">50 %</b>
-                        </div>
-                        <input type="range" id="rngLiveGenDuty" min="1" max="99" step="1" value="50" style="width:100%;">
-                      </div>
+                    <div class="dds-power-card" id="ddsPowerCard">
+                      <span class="dds-power-label">OUTPUT</span>
+                      <button class="dds-power-btn" id="btnLiveGenToggle" data-i18n="dds.output_off">OUTPUT: AUS</button>
                     </div>
                   </div>
                 </div>

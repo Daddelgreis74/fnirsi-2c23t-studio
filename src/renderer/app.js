@@ -844,6 +844,12 @@ function processLiveDmmLine(line) {
     }
   }
 
+  const dmmScreenEl = document.querySelector('.dmm-screen');
+  if (dmmScreenEl) {
+    const isCaution = (dmmMode === 'DCV' || dmmMode === 'ACV') && cleanUnit === 'V' && Math.abs(numVal) >= 30;
+    dmmScreenEl.classList.toggle('dmm-caution', isCaution);
+  }
+
   // Calculate bargraph fill (0 to 100%)
   const maxRef = numVal > 100 ? 500 : (numVal > 10 ? 50 : 10);
   const barPercent = Math.min(100, Math.max(0, (Math.abs(numVal) / maxRef) * 100));
@@ -2013,6 +2019,69 @@ let liveGenWave = 0;
 let liveGenAmp = 33; // tenths of volt (33 = 3.3V)
 let liveGenDuty = 50;
 
+function drawDdsPreview(wave, duty = 50) {
+  const cvs = document.getElementById('ddsPreviewCanvas');
+  if (!cvs) return;
+  const ctx = cvs.getContext('2d');
+  const w = cvs.width;
+  const h = cvs.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Subtle center dotted baseline
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Violet waveform trace (OpenScope gen-1 style)
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const cycles = 2.5;
+  const padY = 9;
+  const amp = (h / 2) - padY;
+  const d = Math.max(0.05, Math.min(0.95, duty / 100));
+
+  for (let x = 0; x < w; x++) {
+    const phase = ((x / w) * cycles) % 1;
+    let yNorm = 0;
+    switch (wave) {
+      case 1: // Square
+        yNorm = phase < d ? 1 : -1;
+        break;
+      case 2: // Sawtooth
+        yNorm = 2 * phase - 1;
+        break;
+      case 3: // Half sine
+        yNorm = phase < 0.5 ? Math.sin(phase * 2 * Math.PI) : 0;
+        break;
+      case 4: // Full wave
+        yNorm = Math.abs(Math.sin(phase * Math.PI)) * 2 - 1;
+        break;
+      case 9: // DC
+        yNorm = 0.65;
+        break;
+      case 13: // Triangle
+        yNorm = phase < 0.5 ? (4 * phase - 1) : (3 - 4 * phase);
+        break;
+      case 14: // Noise
+        yNorm = Math.sin(x * 1.7) * Math.cos(x * 0.9);
+        break;
+      default: // Sine & others
+        yNorm = Math.sin(phase * 2 * Math.PI);
+        break;
+    }
+    const py = h / 2 - yNorm * amp;
+    if (x === 0) ctx.moveTo(x, py);
+    else ctx.lineTo(x, py);
+  }
+  ctx.stroke();
+}
+
 function updateLiveGenUI(running, freq, wave, amp) {
   liveGenRunning = running;
   liveGenFreq = freq;
@@ -2020,17 +2089,14 @@ function updateLiveGenUI(running, freq, wave, amp) {
   liveGenAmp = amp;
 
   const btnToggle = document.getElementById('btnLiveGenToggle');
-  if (btnToggle) {
-    if (running) {
-      btnToggle.innerText = t('dds.output_on');
-      btnToggle.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-      btnToggle.style.color = '#fff';
-    } else {
-      btnToggle.innerText = t('dds.output_off');
-      btnToggle.style.background = '';
-      btnToggle.style.color = '';
-    }
+  const powerCard = document.getElementById('ddsPowerCard');
+  if (powerCard) {
+    powerCard.classList.toggle('active', running);
   }
+  if (btnToggle) {
+    btnToggle.innerText = running ? t('dds.output_on') : t('dds.output_off');
+  }
+  drawDdsPreview(wave, liveGenDuty);
 
   const selWave = document.getElementById('selLiveGenWave');
   if (selWave && wave >= 0 && wave <= 15) {
@@ -2069,6 +2135,7 @@ if (selLiveGenWave) {
   selLiveGenWave.addEventListener('change', (e) => {
     const wave = parseInt(e.target.value, 10);
     liveGenWave = wave;
+    drawDdsPreview(wave, liveGenDuty);
     if (window.api && window.api.sendDmmCommand) {
       window.api.sendDmmCommand(`GEN:WAVE:${wave}\n`);
     }
@@ -2130,6 +2197,7 @@ if (rngLiveGenDuty) {
   rngLiveGenDuty.addEventListener('input', (e) => {
     const duty = parseInt(e.target.value, 10);
     liveGenDuty = duty;
+    drawDdsPreview(liveGenWave, duty);
     const lblDuty = document.getElementById('lblLiveGenDuty');
     if (lblDuty) lblDuty.innerText = `${duty} %`;
     if (window.api && window.api.sendDmmCommand) {
@@ -2137,6 +2205,8 @@ if (rngLiveGenDuty) {
     }
   });
 }
+
+drawDdsPreview(liveGenWave, liveGenDuty);
 
 // Remote Keypad
 document.querySelectorAll('.btn-remote-key[data-key]').forEach(btn => {

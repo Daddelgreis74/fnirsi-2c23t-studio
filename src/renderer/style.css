@@ -1451,3 +1451,200 @@ body.live-link [data-subpane="gen"] .slider-group { display: none; }
   border-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
 }
+
+/* ==========================================
+   OPENSCOPE v2026.11.6 MODERN-UI REDESIGN
+   ========================================== */
+
+:root:not([data-theme="light"]) {
+  --bg-main: #07090d;
+  --bg-sidebar: #0c1018;
+  --bg-card: #111722;
+  --bg-card-hover: #182030;
+  --border-subtle: rgba(148, 163, 184, 0.12);
+}
+
+.control-box,
+.card,
+.dmm-chart-box,
+.dmm-table-box {
+  border-radius: 14px;
+}
+
+/* Header Instrument Dots */
+.inst-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.inst-dot.dmm {
+  background-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.inst-dot.scope {
+  background-color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.inst-dot.gen {
+  background-color: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
+}
+
+/* Modern DMM Card & Caution Mode */
+:root:not([data-theme="light"]) .dmm-screen {
+  background: #111722;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+:root:not([data-theme="light"]) .dmm-screen::before {
+  display: none;
+}
+
+.dmm-screen.dmm-caution {
+  border-color: rgba(245, 158, 11, 0.65) !important;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.18) !important;
+}
+
+.dmm-screen.dmm-caution .dmm-unit-badge {
+  color: #f59e0b;
+}
+
+.dmm-screen-substats {
+  border-top: none;
+  padding-top: 10px;
+  gap: 8px;
+}
+
+:root:not([data-theme="light"]) .dmm-screen-substats .substat {
+  background: #161e2e;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.dmm-bargraph-track {
+  border-radius: 999px;
+  height: 10px;
+}
+
+.dmm-bargraph-fill {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+}
+
+/* Scope OpenScope-Style Pill Bar */
+.scope-strip {
+  gap: 8px 10px;
+}
+
+.strip-group {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.strip-group.ch1 {
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.35);
+}
+
+.strip-group.ch2 {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+.strip-group.strip-run {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.strip-group.strip-run .btn-action {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+}
+
+/* DDS Hardware Modern Layout (gen-1 inspired) */
+.dds-modern-layout {
+  display: grid !important;
+  grid-template-columns: 1fr 130px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dds-preview-canvas {
+  background: #090d14;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dds-select,
+.dds-freq-input {
+  width: 100%;
+  background: #0b101b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.dds-freq-input {
+  flex: 1;
+  font-family: var(--font-mono);
+}
+
+.dds-power-card {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  transition: all 0.2s ease;
+}
+
+.dds-power-card.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.18);
+}
+
+.dds-power-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.dds-power-btn {
+  width: 100%;
+  padding: 10px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dds-power-card.active .dds-power-btn {
+  background: #10b981;
+  border-color: #34d399;
+  color: #052e16;
+}
