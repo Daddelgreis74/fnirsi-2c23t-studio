@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { t } = require('./i18n/main');
 
 class DeviceManager {
@@ -18,106 +18,173 @@ class DeviceManager {
       files: []
     };
     this.lastFilesHash = '';
+    this.scanning = false;
+  }
+
+  classifyDrive(d, dirFiles = [], readFileText = () => '') {
+    const letter = d && d.DeviceID ? d.DeviceID.toUpperCase() : '';
+    if (!letter) return null;
+    const root = letter.endsWith('\\') ? letter : letter + '\\';
+    const lowerFiles = new Set(dirFiles.map((f) => String(f).toLowerCase()));
+    const hasFile = (name) => lowerFiles.has(name.toLowerCase());
+    const volumeName = d.VolumeName || '';
+
+    // 1. Check BootLoader Mode: Drive has Ready.TXT or VolumeName "FNIRSI IAP"
+    if (hasFile('ready.txt') || volumeName.toUpperCase().includes('FNIRSI')) {
+      return {
+        connected: true,
+        mode: 'BOOTLOADER',
+        driveLetter: root,
+        volumeName: volumeName || 'FNIRSI IAP',
+        hwVersion: 'BootLoader Mode (ready to flash)',
+        firmwareVersion: 'IAP Bootloader',
+        bootloaderCrc: null,
+        freeSpace: d.FreeSpace ?? null,
+        totalSpace: d.Size ?? null,
+        files: dirFiles
+      };
+    }
+
+    // 2. Check OpenScope / Runtime Mode: Marker files, USB disk descriptor, or BMP screenshots
+    const hasBootHw4 = hasFile('boot_hw4.txt') || hasFile('boot_hw4.bin');
+    const hasBootOld = hasFile('boot_old.txt') || hasFile('boot_old.bin');
+    const isF2c23tUsb = !!(d.UsbModel && /F2C23T|FNIRSI/i.test(d.UsbModel));
+    const bmpFiles = dirFiles.filter((f) => String(f).toLowerCase().endsWith('.bmp'));
+
+    if (hasBootHw4 || hasBootOld || isF2c23tUsb || (bmpFiles.length > 0 && volumeName !== 'Windows')) {
+      let hw = 'HW: V0.4 (Gowin GW1N-UV2 FPGA)';
+      let fw = 'OpenScope';
+      let crc = null;
+      let mode = 'OPENSCOPE';
+
+      if (hasBootHw4) {
+        try {
+          const bootFile = dirFiles.find((f) => String(f).toLowerCase() === 'boot_hw4.txt');
+          const txt = bootFile ? readFileText(bootFile) : '';
+          const matchFw = txt.match(/Firmware:\s*([^\r\n]+)/i);
+          const matchCrc = txt.match(/CRC32:\s*([^\r\n]+)/i);
+          if (matchFw) fw = 'OpenScope ' + matchFw[1].trim();
+          if (matchCrc) crc = matchCrc[1].trim();
+        } catch (e) {}
+      } else if (hasBootOld) {
+        hw = 'HW: <= V0.3 (AGM AG1KLP FPGA)';
+      } else if (isF2c23tUsb) {
+        fw = 'OpenScope 2C23T';
+        hw = 'HW: F2C23T (USB)';
+      } else {
+        mode = 'STOCK';
+        fw = 'FNIRSI Stock Firmware';
+      }
+
+      return {
+        connected: true,
+        mode,
+        driveLetter: root,
+        volumeName: volumeName || 'FNIRSI 2C23T',
+        hwVersion: hw,
+        firmwareVersion: fw,
+        bootloaderCrc: crc,
+        freeSpace: d.FreeSpace ?? null,
+        totalSpace: d.Size ?? null,
+        files: dirFiles
+      };
+    }
+
+    return null;
   }
 
   // Scan logical drives on Windows using PowerShell Get-CimInstance
   scanDrives() {
+    if (this.scanning) {
+      return Promise.resolve(this.currentStatus);
+    }
+    this.scanning = true;
+
     return new Promise((resolve) => {
-      const psCmd = `powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID, VolumeName, FileSystem, FreeSpace, Size | ConvertTo-Json -Compress"`;
-      exec(psCmd, { timeout: 3500 }, (err, stdout) => {
-        if (err || !stdout.trim()) {
-          this.currentStatus.connected = false;
-          this.currentStatus.mode = 'DISCONNECTED';
-          this.currentStatus.driveLetter = null;
-          return resolve(this.currentStatus);
-        }
+      const psScript = [
+        '$usb = @{}',
+        "Get-CimInstance Win32_DiskDrive | Where-Object { $_.Model -match 'F2C23T|FNIRSI' -or $_.PNPDeviceID -match 'F2C23T|FNIRSI' } | ForEach-Object {",
+        '  $m = $_.Model',
+        '  Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_DiskPartition | ForEach-Object {',
+        '    Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_LogicalDisk | ForEach-Object {',
+        '      if ($_.DeviceID) { $usb[$_.DeviceID.ToUpper()] = $m }',
+        '    }',
+        '  }',
+        '}',
+        'Get-CimInstance Win32_LogicalDisk | ForEach-Object {',
+        '  $k = if ($_.DeviceID) { $_.DeviceID.ToUpper() } else { "" }',
+        '  [PSCustomObject]@{ DeviceID = $_.DeviceID; VolumeName = $_.VolumeName; FileSystem = $_.FileSystem; FreeSpace = $_.FreeSpace; Size = $_.Size; DriveType = $_.DriveType; UsbModel = $usb[$k] }',
+        '} | ConvertTo-Json -Compress'
+      ].join('; ');
 
-        try {
-          let drives = JSON.parse(stdout.trim());
-          if (!Array.isArray(drives)) drives = [drives];
-
-          let detected = null;
-
-          for (const d of drives) {
-            const letter = d.DeviceID ? d.DeviceID.toUpperCase() : '';
-            const root = letter.endsWith('\\') ? letter : letter + '\\';
-            
-            try {
-              if (!fs.existsSync(root)) continue;
-
-              // 1. Check BootLoader Mode: Drive has Ready.TXT or VolumeName "FNIRSI IAP"
-              const hasReadyTxt = fs.existsSync(path.join(root, 'Ready.TXT')) || fs.existsSync(path.join(root, 'ready.txt'));
-              if (hasReadyTxt || (d.VolumeName && d.VolumeName.toUpperCase().includes('FNIRSI'))) {
-                detected = {
-                  connected: true,
-                  mode: 'BOOTLOADER',
-                  driveLetter: root,
-                  volumeName: d.VolumeName || 'FNIRSI IAP',
-                  hwVersion: 'BootLoader Mode (ready to flash)',
-                  firmwareVersion: 'IAP Bootloader'
-                };
-                break;
-              }
-
-              // 2. Check OpenScope / Runtime Mode: Drive has boot_hw4.txt or boot_hw4.bin or boot_old.txt
-              const hasBootHw4 = fs.existsSync(path.join(root, 'boot_hw4.txt')) || fs.existsSync(path.join(root, 'boot_hw4.bin'));
-              const hasBootOld = fs.existsSync(path.join(root, 'boot_old.txt')) || fs.existsSync(path.join(root, 'boot_old.bin'));
-
-              // Also check for BMP screenshots or ARBT waveforms
-              const dirFiles = fs.readdirSync(root);
-              const bmpFiles = dirFiles.filter(f => f.toLowerCase().endsWith('.bmp'));
-
-              if (hasBootHw4 || hasBootOld || (bmpFiles.length > 0 && d.VolumeName !== 'Windows')) {
-                let hw = 'HW: V0.4 (Gowin GW1N-UV2 FPGA)';
-                let fw = 'OpenScope';
-                let crc = null;
-
-                if (hasBootHw4) {
-                  try {
-                    const txt = fs.readFileSync(path.join(root, 'boot_hw4.txt'), 'utf8');
-                    const matchFw = txt.match(/Firmware:\s*([^\r\n]+)/i);
-                    const matchCrc = txt.match(/CRC32:\s*([^\r\n]+)/i);
-                    if (matchFw) fw = 'OpenScope ' + matchFw[1].trim();
-                    if (matchCrc) crc = matchCrc[1].trim();
-                  } catch (e) {}
-                } else if (hasBootOld) {
-                  hw = 'HW: <= V0.3 (AGM AG1KLP FPGA)';
-                } else {
-                  fw = 'FNIRSI Stock Firmware';
-                }
-
-                detected = {
-                  connected: true,
-                  mode: hasBootHw4 || hasBootOld ? 'OPENSCOPE' : 'STOCK',
-                  driveLetter: root,
-                  volumeName: d.VolumeName || 'FNIRSI 2C23T',
-                  hwVersion: hw,
-                  firmwareVersion: fw,
-                  bootloaderCrc: crc,
-                  freeSpace: d.FreeSpace,
-                  totalSpace: d.Size,
-                  files: dirFiles
-                };
-                break;
-              }
-            } catch (e) {
-              // Drive read failed (e.g. CD-ROM or locked), skip
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+        { timeout: 5000 },
+        (err, stdout) => {
+          try {
+            if (err || !stdout || !stdout.trim()) {
+              this.currentStatus = {
+                ...this.currentStatus,
+                connected: false,
+                mode: 'DISCONNECTED',
+                driveLetter: null,
+                bootloaderCrc: null,
+                firmwareVersion: null,
+                hwVersion: 'Unknown',
+                files: []
+              };
+              return resolve(this.currentStatus);
             }
-          }
 
-          if (detected) {
-            this.currentStatus = { ...this.currentStatus, ...detected };
-          } else {
-            this.currentStatus.connected = false;
-            this.currentStatus.mode = 'DISCONNECTED';
-            this.currentStatus.driveLetter = null;
-          }
+            let drives = JSON.parse(stdout.trim());
+            if (!Array.isArray(drives)) drives = [drives];
 
-          resolve(this.currentStatus);
-        } catch (e) {
-          resolve(this.currentStatus);
+            let detected = null;
+
+            for (const d of drives) {
+              const letter = d && d.DeviceID ? d.DeviceID.toUpperCase() : '';
+              if (!letter) continue;
+              const root = letter.endsWith('\\') ? letter : letter + '\\';
+
+              try {
+                if (!fs.existsSync(root)) continue;
+                const dirFiles = fs.readdirSync(root);
+                const match = this.classifyDrive(d, dirFiles, (name) =>
+                  fs.readFileSync(path.join(root, name), 'utf8')
+                );
+                if (match) {
+                  detected = match;
+                  break;
+                }
+              } catch (e) {
+                // Drive read failed (e.g. CD-ROM or locked), skip
+              }
+            }
+
+            if (detected) {
+              this.currentStatus = { ...this.currentStatus, ...detected };
+            } else {
+              this.currentStatus = {
+                ...this.currentStatus,
+                connected: false,
+                mode: 'DISCONNECTED',
+                driveLetter: null,
+                bootloaderCrc: null,
+                firmwareVersion: null,
+                hwVersion: 'Unknown',
+                files: []
+              };
+            }
+
+            resolve(this.currentStatus);
+          } catch (e) {
+            resolve(this.currentStatus);
+          } finally {
+            this.scanning = false;
+          }
         }
-      });
+      );
     });
   }
 

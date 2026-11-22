@@ -16,6 +16,7 @@ function createWindow() {
     height: 820,
     minWidth: 1050,
     minHeight: 680,
+    fullscreen: true,
     show: false,
     backgroundColor: '#0a0d14',
     title: 'FNIRSI 2C23T Studio',
@@ -29,8 +30,8 @@ function createWindow() {
 
   mainWindow.setMenuBarVisibility(false);
   mainWindow.once('ready-to-show', () => {
-    mainWindow.maximize();
     mainWindow.show();
+    if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
   });
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;

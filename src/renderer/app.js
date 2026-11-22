@@ -10,6 +10,8 @@ const translator = I18nCore.createTranslator(
 const t = translator.t;
 
 let currentDeviceStatus = null;
+let isLiveSerialConnected = false;
+let liveSerialPort = null;
 let scopeRunning = true;
 let liveScopeWave1 = null;
 let liveScopeWave2 = null;
@@ -129,11 +131,18 @@ function updateDeviceUI(status) {
   currentDeviceStatus = status;
   statusPill.className = 'status-pill';
 
-  if (!status.connected) {
-    statusPill.classList.add('offline');
-    statusText.innerText = t('status.none');
-    metaHw.innerText = 'HW: --';
-    metaDrive.innerText = t('header.drive_none');
+  if (!status || !status.connected) {
+    if (isLiveSerialConnected) {
+      statusPill.classList.add('online');
+      statusText.innerText = liveSerialPort ? `OpenScope (${liveSerialPort})` : t('status.connected');
+      metaHw.innerText = 'USB-CDC Live';
+      metaDrive.innerText = t('header.drive_none');
+    } else {
+      statusPill.classList.add('offline');
+      statusText.innerText = t('status.none');
+      metaHw.innerText = 'HW: --';
+      metaDrive.innerText = t('header.drive_none');
+    }
     return;
   }
 
@@ -149,7 +158,8 @@ function updateDeviceUI(status) {
     metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
 
     if (status.bootloaderCrc) {
-      document.getElementById('valBootloaderCrc').innerText = status.bootloaderCrc;
+      const crcEl = document.getElementById('valBootloaderCrc');
+      if (crcEl) crcEl.innerText = status.bootloaderCrc;
     }
   }
 }
@@ -434,8 +444,6 @@ const lblDmmHwMsg = document.getElementById("lblDmmHwMsg");
 
 let serialPort = null;
 let serialReader = null;
-let isLiveSerialConnected = false;
-let liveSerialPort = null;
 let serialUiShown = false;
 let dmmTempScale = localStorage.getItem('dmmTempScale') === 'F' ? 'F' : 'C';
 let lastRawDmmLine = null;
@@ -686,6 +694,7 @@ function updateSerialConnectionUI(connected, port) {
     if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
     if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_waiting');
   }
+  updateDeviceUI(currentDeviceStatus);
 }
 
 function processLiveDmmLine(line) {
