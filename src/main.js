@@ -16,6 +16,7 @@ function createWindow() {
     height: 820,
     minWidth: 1050,
     minHeight: 680,
+    show: false,
     backgroundColor: '#0a0d14',
     title: 'FNIRSI 2C23T Studio',
     icon: path.join(__dirname, '../build/icon.png'),
@@ -27,6 +28,20 @@ function createWindow() {
   });
 
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
+  });
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F11') {
+      event.preventDefault();
+      mainWindow.setFullScreen(!mainWindow.isFullScreen());
+    } else if (input.key === 'Escape' && mainWindow.isFullScreen()) {
+      event.preventDefault();
+      mainWindow.setFullScreen(false);
+    }
+  });
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
   // Web Serial API permission handler for live USB-CDC COM port streaming

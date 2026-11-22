@@ -302,7 +302,15 @@ document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
     document.querySelectorAll('.btn-dmm-mode').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    dmmMode = btn.dataset.mode;
+    const cmdMode = btn.dataset.mode;
+    dmmMode = cmdMode;
+    if (cmdMode === 'TEMPF') {
+      dmmTempScale = 'F';
+      localStorage.setItem('dmmTempScale', 'F');
+    } else if (cmdMode === 'TEMP') {
+      dmmTempScale = 'C';
+      localStorage.setItem('dmmTempScale', 'C');
+    }
     dmmUnit = btn.dataset.unit;
     dmmSubtype = btn.dataset.subtype;
 
@@ -315,7 +323,7 @@ document.querySelectorAll('.btn-dmm-mode').forEach(btn => {
 
     // Synchronize mode change to physical 2C23T hardware
     if (window.api && window.api.sendDmmCommand) {
-      window.api.sendDmmCommand('MODE:' + dmmMode);
+      window.api.sendDmmCommand('MODE:' + cmdMode);
     }
 
     updateDmmReading();
@@ -429,6 +437,8 @@ let serialReader = null;
 let isLiveSerialConnected = false;
 let liveSerialPort = null;
 let serialUiShown = false;
+let dmmTempScale = localStorage.getItem('dmmTempScale') === 'F' ? 'F' : 'C';
+let lastRawDmmLine = null;
 // Apply Reading to OLED UI, Stats & Logger
 function applyDmmReadingToUi(reading) {
   const now = new Date();
@@ -504,7 +514,7 @@ function applyDmmReadingToUi(reading) {
 
 // Update DMM UI & Logger (Simulation Loop)
 function updateDmmReading() {
-  if (isLiveSerialConnected) return;
+  if (isLiveSerialConnected || typeof calculateDmmValue !== 'function') return;
   const reading = calculateDmmValue();
   applyDmmReadingToUi(reading);
 }
@@ -683,6 +693,7 @@ function processLiveDmmLine(line) {
   // Example: $DMM,ACV,230.1,V,OK  or  $DMM,RES,4.72,KOHM,OK
   const parts = line.split(',');
   if (parts.length < 5) return;
+  lastRawDmmLine = line;
 
   const modeTag = parts[1].trim().toUpperCase();
   let rawVal = parts[2].trim();
@@ -695,14 +706,31 @@ function processLiveDmmLine(line) {
 
   // 1. Direct explicit mode matching from OpenScope firmware
   switch (modeTag) {
+    case 'AUTO':
+      detectedMode = 'AUTO';
+      subtype = 'AUTO';
+      if (rawVal.toUpperCase() === 'AUTO') {
+        cleanUnit = '';
+      } else if (rawUnit === 'MV') {
+        cleanUnit = 'mV';
+      } else if (rawUnit === 'V') {
+        cleanUnit = 'V';
+      } else if (rawUnit.includes('OHM') || rawUnit.includes('Ω')) {
+        cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
+      } else if (rawUnit === 'DEG') {
+        cleanUnit = dmmTempScale === 'F' ? '°F' : '°C';
+      } else {
+        cleanUnit = rawUnit;
+      }
+      break;
     case 'ACV':
       detectedMode = 'ACV';
-      cleanUnit = 'V';
+      cleanUnit = rawUnit === 'MV' ? 'mV' : 'V';
       subtype = 'AC TRMS';
       break;
     case 'DCV':
       detectedMode = 'DCV';
-      cleanUnit = 'V';
+      cleanUnit = rawUnit === 'MV' ? 'mV' : 'V';
       subtype = 'DC';
       break;
     case 'ACA':
@@ -716,13 +744,13 @@ function processLiveDmmLine(line) {
       subtype = 'DC';
       break;
     case 'ACMA':
-      detectedMode = 'MA';
-      cleanUnit = 'mA';
+      detectedMode = 'ACMA';
+      cleanUnit = rawUnit === 'UA' ? 'µA' : 'mA';
       subtype = 'AC TRMS';
       break;
     case 'DCMA':
-      detectedMode = 'MA';
-      cleanUnit = 'mA';
+      detectedMode = 'DCMA';
+      cleanUnit = rawUnit === 'UA' ? 'µA' : 'mA';
       subtype = 'DC';
       break;
     case 'RES':
@@ -731,29 +759,40 @@ function processLiveDmmLine(line) {
       cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
       break;
     case 'CONT':
-      detectedMode = 'CONT';
-      subtype = 'CONT';
-      cleanUnit = 'Ω';
-      break;
     case 'DIODE':
       detectedMode = 'DIODE';
-      subtype = 'DIODE';
-      cleanUnit = 'V';
+      subtype = (modeTag === 'CONT' || rawUnit.includes('OHM')) ? 'CONT' : 'DIODE';
+      cleanUnit = rawUnit.includes('OHM')
+        ? rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω')
+        : (rawUnit === 'MV' ? 'mV' : 'V');
       break;
     case 'CAP':
       detectedMode = 'CAP';
       subtype = 'CAP';
       cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF').replace('MF', 'mF');
       break;
+    case 'TEMPF':
+      detectedMode = 'TEMPF';
+      dmmTempScale = 'F';
+      localStorage.setItem('dmmTempScale', 'F');
+      subtype = 'TEMP';
+      cleanUnit = '°F';
+      break;
     case 'TEMP':
       detectedMode = 'TEMP';
       subtype = 'TEMP';
-      cleanUnit = (rawUnit.includes('F') || rawUnit.includes('DEG F')) ? '°F' : '°C';
+      if (rawUnit === 'DEGC') {
+        dmmTempScale = 'C';
+        localStorage.setItem('dmmTempScale', 'C');
+        cleanUnit = '°C';
+      } else {
+        cleanUnit = dmmTempScale === 'F' ? '°F' : '°C';
+      }
       break;
     case 'LIVE':
-      detectedMode = 'DCV';
+      detectedMode = 'LIVE';
       subtype = 'LIVE';
-      cleanUnit = 'V';
+      cleanUnit = '';
       break;
     default:
       // Fallback for legacy telemetry formats
@@ -762,21 +801,21 @@ function processLiveDmmLine(line) {
         cleanUnit = 'V';
         subtype = detectedMode === 'ACV' ? 'AC TRMS' : 'DC';
       } else if (rawUnit === 'MV') {
-        detectedMode = 'DCMV';
+        detectedMode = (dmmMode === 'ACV' || modeTag.includes('AC')) ? 'ACV' : 'DCV';
         cleanUnit = 'mV';
-        subtype = 'DC';
+        subtype = detectedMode === 'ACV' ? 'AC TRMS' : 'DC';
       } else if (rawUnit === 'A') {
         detectedMode = (dmmMode === 'ACA' || modeTag.includes('AC')) ? 'ACA' : 'DCA';
         cleanUnit = 'A';
         subtype = detectedMode === 'ACA' ? 'AC TRMS' : 'DC';
-      } else if (rawUnit === 'MA') {
-        detectedMode = 'MA';
-        cleanUnit = 'mA';
-        subtype = modeTag.includes('AC') ? 'AC TRMS' : 'DC';
+      } else if (rawUnit === 'MA' || rawUnit === 'UA') {
+        detectedMode = modeTag.includes('AC') ? 'ACMA' : 'DCMA';
+        cleanUnit = rawUnit === 'UA' ? 'µA' : 'mA';
+        subtype = detectedMode === 'ACMA' ? 'AC TRMS' : 'DC';
       } else if (rawUnit.includes('OHM') || rawUnit.includes('Ω')) {
         cleanUnit = rawUnit.replace('KOHM', 'kΩ').replace('MOHM', 'MΩ').replace('OHM', 'Ω');
-        detectedMode = (dmmMode === 'CONT' || modeTag === 'CONT') ? 'CONT' : 'RES';
-        subtype = detectedMode === 'CONT' ? 'CONT' : 'RES';
+        detectedMode = (dmmMode === 'DIODE' || modeTag === 'CONT') ? 'DIODE' : 'RES';
+        subtype = detectedMode === 'DIODE' ? 'CONT' : 'RES';
       } else if (rawUnit.includes('F')) {
         detectedMode = 'CAP';
         cleanUnit = rawUnit.replace('NF', 'nF').replace('UF', 'µF').replace('PF', 'pF');
@@ -785,19 +824,16 @@ function processLiveDmmLine(line) {
         detectedMode = 'TEMP';
         cleanUnit = '°C';
         subtype = 'TEMP';
-      } else if (rawUnit.includes('HZ')) {
-        detectedMode = 'FREQ';
-        cleanUnit = rawUnit.includes('KHZ') ? 'kHz' : 'Hz';
-        subtype = 'FREQ';
       }
       break;
   }
 
   // Synchronize UI active button when hardware mode changes
-  if (detectedMode !== dmmMode) {
+  const activeButtonMode = (detectedMode === 'TEMPF' || (detectedMode === 'TEMP' && dmmTempScale === 'F')) ? 'TEMPF' : detectedMode;
+  if (detectedMode !== dmmMode || !document.querySelector(`.btn-dmm-mode.active[data-mode="${activeButtonMode}"]`)) {
     dmmMode = detectedMode;
     document.querySelectorAll('.btn-dmm-mode').forEach(b => {
-      b.classList.toggle('active', b.dataset.mode === dmmMode);
+      b.classList.toggle('active', b.dataset.mode === activeButtonMode);
     });
   }
 
@@ -823,17 +859,44 @@ function processLiveDmmLine(line) {
     numVal = 0;
     stopBuzzer();
     setDmmAlertState(false);
+  } else if (detectedMode === 'AUTO' && rawVal.toUpperCase() === 'AUTO') {
+    formatted = 'AUTO';
+    numVal = 0;
+    stopBuzzer();
+    setDmmAlertState(false);
+  } else if (detectedMode === 'LIVE' && (rawVal.toUpperCase() === 'L1UE' || rawVal.toUpperCase() === 'LIVE' || rawVal.toUpperCase() === 'IDLE' || rawVal === '')) {
+    formatted = rawVal.toUpperCase() === 'IDLE' ? 'IDLE' : 'LIVE';
+    numVal = 0;
+    stopBuzzer();
+    setDmmAlertState(false);
   } else {
     numVal = parseFloat(rawVal) || 0;
     formatted = rawVal;
+
+    if (detectedMode === 'TEMP' && rawUnit === 'DEG') {
+      if (dmmTempScale === 'F') {
+        const signed = (sign === '-' ? -numVal : numVal);
+        const converted = signed * 9 / 5 + 32;
+        const decimals = rawVal.includes('.') ? rawVal.split('.')[1].length : 0;
+        sign = converted < 0 ? '-' : '';
+        numVal = Math.abs(converted);
+        formatted = numVal.toFixed(decimals);
+      }
+    }
 
     // Value alert: beep while the reading is inside target +/- tolerance, stop as soon as it leaves
     if (isDmmAlertActive(DmmAlert.signedValue(sign, numVal))) {
       playBuzzer(1200);
       status = 'ALERT';
-    } else if (dmmMode === 'CONT') {
-      // Buzzer in continuity mode
-      if (numVal < 50 && rawVal !== 'OPEN' && status !== 'OVERLOAD') {
+    } else if (dmmMode === 'DIODE' || modeTag === 'CONT') {
+      // Buzzer in continuity mode (matches firmware dmm_diode_continuity_active)
+      const isContinuityHit =
+        rawVal !== 'OPEN' &&
+        status !== 'OVERLOAD' &&
+        ((rawUnit === 'OHM' && numVal <= 50) ||
+         (rawUnit === 'V' && numVal <= 0.1) ||
+         (rawUnit === 'MV' && numVal <= 100));
+      if (isContinuityHit) {
         playBuzzer(2400);
         status = 'BUZZ';
       } else {
@@ -846,7 +909,7 @@ function processLiveDmmLine(line) {
 
   const dmmScreenEl = document.querySelector('.dmm-screen');
   if (dmmScreenEl) {
-    const isCaution = (dmmMode === 'DCV' || dmmMode === 'ACV') && cleanUnit === 'V' && Math.abs(numVal) >= 30;
+    const isCaution = (dmmMode === 'DCV' || dmmMode === 'ACV' || dmmMode === 'AUTO') && cleanUnit === 'V' && Math.abs(numVal) >= 30;
     dmmScreenEl.classList.toggle('dmm-caution', isCaution);
   }
 
@@ -1849,12 +1912,37 @@ function drawDesigner() {
   }
 }
 
+// Map Arbitrary Designer presets to native OpenScope DDS waveforms (GEN:WAVE:<id>)
+const PRESET_TO_DDS_WAVE = {
+  sine: 0,      // SIGGEN_WAVE_SINE
+  square: 1,    // SIGGEN_WAVE_SQUARE
+  sawtooth: 2,  // SIGGEN_WAVE_SAW
+  halfsine: 3,  // SIGGEN_WAVE_HALF
+  exp: 7,       // SIGGEN_WAVE_EXP_RISE
+  triangle: 13, // SIGGEN_WAVE_TRIANGLE
+  noise: 14     // SIGGEN_WAVE_NOISE
+};
+const DDS_WAVE_TO_PRESET = Object.fromEntries(
+  Object.entries(PRESET_TO_DDS_WAVE).map(([preset, id]) => [id, preset])
+);
+
 // Preset clicks
 document.querySelectorAll('.btn-preset').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    initWavePreset(btn.dataset.preset);
+    const preset = btn.dataset.preset;
+    initWavePreset(preset);
+    if (Object.prototype.hasOwnProperty.call(PRESET_TO_DDS_WAVE, preset)) {
+      const waveId = PRESET_TO_DDS_WAVE[preset];
+      liveGenWave = waveId;
+      drawDdsPreview(waveId, liveGenDuty);
+      const selWave = document.getElementById('selLiveGenWave');
+      if (selWave) selWave.value = String(waveId);
+      if (window.api && window.api.sendDmmCommand) {
+        window.api.sendDmmCommand(`GEN:WAVE:${waveId}\n`);
+      }
+    }
   });
 });
 
@@ -2101,6 +2189,12 @@ function updateLiveGenUI(running, freq, wave, amp) {
   const selWave = document.getElementById('selLiveGenWave');
   if (selWave && wave >= 0 && wave <= 15) {
     selWave.value = String(wave);
+  }
+  const matchedPreset = DDS_WAVE_TO_PRESET[wave];
+  if (matchedPreset) {
+    document.querySelectorAll('.btn-preset').forEach(b => {
+      b.classList.toggle('active', b.dataset.preset === matchedPreset);
+    });
   }
 
   const numFreq = document.getElementById('numLiveGenFreq');

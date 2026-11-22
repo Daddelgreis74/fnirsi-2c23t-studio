@@ -1011,6 +1011,10 @@ input[type="range"] {
   gap: 8px;
 }
 
+.btn-dmm-mode-full {
+  grid-column: 1 / -1;
+}
+
 .btn-dmm-mode {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.04);

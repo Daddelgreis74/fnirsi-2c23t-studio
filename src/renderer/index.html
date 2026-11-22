@@ -107,8 +107,7 @@
 
         <div class="sidebar-footer">
           <div class="creator-badge">
-            <span>Daddelgreis74 Edition</span>
-            <small>v1.2.0 • 2C23T Companion</small>
+            <small>v1.2.1 • 2C23T Companion</small>
             <small class="hw-info" id="metaHw" data-i18n="header.hw_checking">HW: Prüfe...</small>
             <button class="btn-pill" id="btnCheckUpdates" data-i18n="updater.check" style="margin-top:6px; width:100%; font-size:11px;">🔄 Update prüfen</button>
           </div>
@@ -186,18 +185,19 @@
               <div class="dmm-functions-box">
                 <div class="dmm-section-title" data-i18n="dmm.ranges">Messbereiche (Funktionswahl)</div>
                 <div class="dmm-modes-grid">
+                  <button class="btn-dmm-mode btn-dmm-mode-full" data-mode="AUTO" data-unit="" data-subtype="AUTO" data-i18n="dmm.mode.auto">AUTO (Smart)</button>
                   <button class="btn-dmm-mode active" data-mode="DCV" data-unit="V" data-subtype="DC">DC V</button>
                   <button class="btn-dmm-mode" data-mode="ACV" data-unit="V" data-subtype="AC TRMS">AC V</button>
-                  <button class="btn-dmm-mode" data-mode="DCMV" data-unit="mV" data-subtype="DC">DC mV</button>
-                  <button class="btn-dmm-mode" data-mode="DCA" data-unit="A" data-subtype="DC">DC A</button>
-                  <button class="btn-dmm-mode" data-mode="ACA" data-unit="A" data-subtype="AC TRMS">AC A</button>
-                  <button class="btn-dmm-mode" data-mode="MA" data-unit="mA" data-subtype="DC">mA / µA</button>
                   <button class="btn-dmm-mode" data-mode="RES" data-unit="Ω" data-subtype="RES" data-i18n="dmm.mode.res">Widerstand Ω</button>
                   <button class="btn-dmm-mode" data-mode="CAP" data-unit="µF" data-subtype="CAP" data-i18n="dmm.mode.cap">Kapazität F</button>
-                  <button class="btn-dmm-mode" data-mode="CONT" data-unit="Ω" data-subtype="CONT" data-i18n="dmm.mode.cont">Durchgang 🔔</button>
-                  <button class="btn-dmm-mode" data-mode="DIODE" data-unit="V" data-subtype="DIODE">Diode ▶|</button>
-                  <button class="btn-dmm-mode" data-mode="FREQ" data-unit="Hz" data-subtype="FREQ" data-i18n="dmm.mode.freq">Frequenz Hz</button>
+                  <button class="btn-dmm-mode" data-mode="DCA" data-unit="A" data-subtype="DC">DC A</button>
+                  <button class="btn-dmm-mode" data-mode="ACA" data-unit="A" data-subtype="AC TRMS">AC A</button>
+                  <button class="btn-dmm-mode" data-mode="DCMA" data-unit="mA" data-subtype="DC">DC mA</button>
+                  <button class="btn-dmm-mode" data-mode="ACMA" data-unit="mA" data-subtype="AC TRMS">AC mA</button>
+                  <button class="btn-dmm-mode" data-mode="DIODE" data-unit="V" data-subtype="DIODE" data-i18n="dmm.mode.diode_cont">Diode / Durchg. 🔔</button>
                   <button class="btn-dmm-mode" data-mode="TEMP" data-unit="°C" data-subtype="TEMP" data-i18n="dmm.mode.temp">Temperatur °C</button>
+                  <button class="btn-dmm-mode" data-mode="TEMPF" data-unit="°F" data-subtype="TEMP" data-i18n="dmm.mode.temp_f">Temperatur °F</button>
+                  <button class="btn-dmm-mode" data-mode="LIVE" data-unit="" data-subtype="LIVE" data-i18n="dmm.mode.live">LIVE Phase ⚡</button>
                 </div>
 
                 <div class="dmm-softkeys-row">
