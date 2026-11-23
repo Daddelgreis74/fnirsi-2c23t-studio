@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const { t } = require('./i18n/main');
+const fwFlasher = require('./fw_flasher');
 
 class DeviceManager {
   constructor() {
@@ -102,6 +103,7 @@ class DeviceManager {
 
     return new Promise((resolve) => {
       const psScript = [
+        '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
         '$usb = @{}',
         "Get-CimInstance Win32_DiskDrive | Where-Object { $_.Model -match 'F2C23T|FNIRSI' -or $_.PNPDeviceID -match 'F2C23T|FNIRSI' } | ForEach-Object {",
         '  $m = $_.Model',
@@ -120,7 +122,7 @@ class DeviceManager {
       execFile(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
-        { timeout: 5000 },
+        { timeout: 5000, encoding: 'utf8' },
         (err, stdout) => {
           try {
             if (err || !stdout || !stdout.trim()) {
@@ -254,6 +256,41 @@ class DeviceManager {
       path: targetPath,
       name: `${cleanName}.CSV`,
       points: pointsArray.length
+    };
+  }
+
+  async flashFirmware(sourcePath, targetHw) {
+    if (!this.currentStatus.connected || !this.currentStatus.driveLetter) {
+      throw new Error(t('device.no_drive'));
+    }
+
+    const hw = targetHw || this.currentStatus.hwVersion;
+    const validation = fwFlasher.validateFirmwareFile(sourcePath, hw);
+    if (!validation.ok) {
+      return { success: false, validation };
+    }
+
+    if (typeof this.currentStatus.freeSpace === 'number' && this.currentStatus.freeSpace < validation.size + 4096) {
+      return {
+        success: false,
+        validation: {
+          ...validation,
+          ok: false,
+          reason: 'no_space'
+        }
+      };
+    }
+
+    const buffer = await fs.promises.readFile(sourcePath);
+    const targetPath = path.join(this.currentStatus.driveLetter, validation.filename);
+    await fwFlasher.writeFirmwareFlushed(targetPath, buffer);
+
+    return {
+      success: true,
+      targetPath,
+      filename: validation.filename,
+      size: validation.size,
+      validation
     };
   }
 }

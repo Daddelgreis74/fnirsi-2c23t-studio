@@ -72,8 +72,14 @@
     <!-- MAIN BODY -->
     <div class="app-body">
       <!-- SIDEBAR -->
-      <nav class="sidebar">
-        <button class="nav-item active" data-tab="dmm">
+      <nav class="sidebar" id="appSidebar">
+        <button class="sidebar-toggle-btn" id="btnToggleSidebar" type="button" data-i18n-title="sidebar.collapse" title="Menü einklappen">
+          <svg class="sidebar-toggle-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span class="sidebar-toggle-label" data-i18n="sidebar.collapse">Menü einklappen</span>
+        </button>
+        <button class="nav-item active" data-tab="dmm" data-i18n-title="nav.dmm">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <rect x="4" y="2" width="16" height="20" rx="3" ry="3"></rect>
             <rect x="7" y="5" width="10" height="5" rx="1"></rect>
@@ -83,13 +89,13 @@
           </svg>
           <span data-i18n="nav.dmm">Digital-Multimeter</span>
         </button>
-        <button class="nav-item" data-tab="scope">
+        <button class="nav-item" data-tab="scope" data-i18n-title="nav.scope">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
           </svg>
           <span data-i18n="nav.scope">Oszilloskop & Labor</span>
         </button>
-        <button class="nav-item" data-tab="gallery">
+        <button class="nav-item" data-tab="gallery" data-i18n-title="nav.gallery">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -98,7 +104,7 @@
           <span data-i18n="nav.gallery">Screenshots & Wellen</span>
           <span class="badge-count" id="badgeGalleryCount">0</span>
         </button>
-        <button class="nav-item" data-tab="generator">
+        <button class="nav-item" data-tab="generator" title="Arbitrary Waveform Studio">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
@@ -107,9 +113,10 @@
 
         <div class="sidebar-footer">
           <div class="creator-badge">
-            <small>v1.2.1 • 2C23T Companion</small>
+            <small>v1.2.2 • 2C23T Companion</small>
             <small class="hw-info" id="metaHw" data-i18n="header.hw_checking">HW: Prüfe...</small>
-            <button class="btn-pill" id="btnCheckUpdates" data-i18n="updater.check" style="margin-top:6px; width:100%; font-size:11px;">🔄 Update prüfen</button>
+            <button class="btn-pill fw-flash-trigger" id="btnOpenFwModal" data-short-icon="⚡" data-i18n="fw.open_btn" data-i18n-title="fw.open_btn" style="margin-top:6px; width:100%; font-size:11px;">⚡ 2C23T Firmware</button>
+            <button class="btn-pill" id="btnCheckUpdates" data-short-icon="🔄" data-i18n="updater.check" data-i18n-title="updater.check" style="margin-top:6px; width:100%; font-size:11px;">🔄 Update prüfen</button>
           </div>
         </div>
       </nav>
@@ -293,29 +300,27 @@
                   </table>
                 </div>
               </div>
-            </div>
 
-            <!-- RAW TELEMETRY & SERIAL PROTOCOL INSPECTOR -->
-            <div class="card" style="margin-top: 16px;">
-              <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="font-size:14px; margin:0; display:flex; align-items:center; gap:8px;">
-                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
-                  <span data-i18n="dmm.raw_title">Live Telemetrie-Logger &amp; Serial Monitor (Raw Datenstrom)</span>
-                </h3>
-                <div style="display:flex; gap:8px; align-items:center;">
-                  <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="checkbox" id="chkDmmLogAutoScroll" checked> <span data-i18n="dmm.autoscroll">Auto-Scroll</span>
-                  </label>
-                  <button class="btn-action secondary" id="btnDmmCopyRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.copy">Kopieren</button>
-                  <button class="btn-action secondary" id="btnDmmSaveRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.save_log">Als .log speichern</button>
-                  <button class="btn-action secondary" id="btnDmmClearRawLog" style="padding:4px 10px; font-size:11px;" data-i18n="dmm.clear">Leeren</button>
+              <!-- RAW TELEMETRY & SERIAL PROTOCOL INSPECTOR -->
+              <div class="dmm-serial-box">
+                <div class="dmm-serial-header">
+                  <h3 class="dmm-serial-title">
+                    <span class="dmm-serial-dot"></span>
+                    <span data-i18n="dmm.raw_title">Live Telemetrie-Logger &amp; Serial Monitor (Raw Datenstrom)</span>
+                  </h3>
+                  <div class="dmm-serial-actions">
+                    <label class="dmm-serial-autoscroll">
+                      <input type="checkbox" id="chkDmmLogAutoScroll" checked> <span data-i18n="dmm.autoscroll">Auto-Scroll</span>
+                    </label>
+                    <button class="btn-action secondary" id="btnDmmCopyRawLog" data-i18n="dmm.copy">Kopieren</button>
+                    <button class="btn-action secondary" id="btnDmmSaveRawLog" data-i18n="dmm.save_log">Als .log speichern</button>
+                    <button class="btn-action secondary" id="btnDmmClearRawLog" data-i18n="dmm.clear">Leeren</button>
+                  </div>
                 </div>
-              </div>
-              <div class="card-body" style="padding:12px;">
-                <div id="txtDmmSerialLog" style="background:#030712; color:#38bdf8; font-family:'Cascadia Code', Consolas, monospace; font-size:12px; height:180px; overflow-y:auto; padding:10px; border-radius:6px; border:1px solid #1f2937; white-space:pre-wrap; line-height:1.5;"></div>
-                <div style="display:flex; gap:8px; margin-top:8px;">
-                  <input type="text" id="inputDmmSerialCmd" placeholder="Manuellen Steuerbefehl an 2C23T senden (z.B. MODE:ACV, MODE:DCV, MODE:RES, MODE:CONT)..." data-i18n-placeholder="dmm.cmd_placeholder" style="flex:1; background:#0f172a; border:1px solid #334155; border-radius:4px; padding:6px 12px; color:#f8fafc; font-family:'Cascadia Code', monospace; font-size:12px;">
-                  <button class="btn-action" id="btnDmmSendSerialCmd" style="padding:6px 16px; font-size:12px; background:linear-gradient(135deg, #0284c7, #0369a1); border:none; cursor:pointer;" data-i18n="dmm.send_cmd">Befehl Senden</button>
+                <div id="txtDmmSerialLog" class="dmm-serial-log"></div>
+                <div class="dmm-serial-cmd-row">
+                  <input type="text" id="inputDmmSerialCmd" class="dmm-serial-input" placeholder="Manuellen Steuerbefehl an 2C23T senden (z.B. MODE:ACV, MODE:DCV, MODE:RES, MODE:CONT)..." data-i18n-placeholder="dmm.cmd_placeholder">
+                  <button class="btn-action dmm-serial-send" id="btnDmmSendSerialCmd" data-i18n="dmm.send_cmd">Befehl Senden</button>
                 </div>
               </div>
             </div>
@@ -707,6 +712,55 @@
       </main>
     </div>
 
+    <!-- FIRMWARE FLASHER MODAL -->
+    <div class="modal-overlay" id="fwModalOverlay" hidden>
+      <div class="modal-box fw-modal-box" role="dialog" aria-modal="true" aria-labelledby="fwModalTitle">
+        <div class="fw-modal-header">
+          <h3 id="fwModalTitle" data-i18n="fw.modal_title">2C23T Firmware aktualisieren</h3>
+          <button class="btn-subtle" id="btnCloseFwModal" type="button" aria-label="Close">✕</button>
+        </div>
+        <p class="fw-modal-subtitle" data-i18n="fw.modal_subtitle">Prüft Hardware-Revision und Vektor-Tabelle vor dem Kopieren auf das Gerät und überwacht den In-App-Flash-Vorgang.</p>
+
+        <div class="fw-info-grid">
+          <div class="fw-info-item">
+            <span data-i18n="fw.lbl_firmware">Firmware</span>
+            <b id="fwCurrentVer">--</b>
+          </div>
+          <div class="fw-info-item">
+            <span data-i18n="fw.lbl_hardware">Hardware</span>
+            <b id="fwCurrentHw">--</b>
+          </div>
+          <div class="fw-info-item">
+            <span data-i18n="fw.lbl_drive">Laufwerk</span>
+            <b id="fwCurrentDrive">--</b>
+          </div>
+        </div>
+
+        <div class="fw-file-row">
+          <div class="fw-file-name" id="fwSelectedFile" data-i18n="fw.no_file">Keine Firmware-Datei ausgewählt (.bin)</div>
+          <button class="btn-action secondary" id="btnSelectFwFile" type="button" data-i18n="fw.choose_file">.bin auswählen</button>
+        </div>
+
+        <div class="fw-validation-box" id="fwValidationBox" hidden></div>
+
+        <div class="fw-progress-section" id="fwProgressSection" hidden>
+          <div class="progress-bar-wrapper">
+            <div class="progress-bar-fill" id="fwProgressFill" style="width:0%"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="fwProgressLabel"></span>
+            <span id="fwProgressPct">0%</span>
+          </div>
+          <small class="fw-warning-note" data-i18n="fw.do_not_unplug">USB-Kabel während Staging, Flashen und Neustart nicht abziehen.</small>
+        </div>
+
+        <div class="fw-modal-actions">
+          <button class="btn-action secondary" id="btnFwCancel" type="button" data-i18n="fw.close">Schließen</button>
+          <button class="btn-action primary" id="btnStartFwFlash" type="button" disabled data-i18n="fw.flash_btn">Firmware jetzt installieren</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast" id="toast" data-i18n="toast.default">Meldung</div>
   </div>
@@ -716,6 +770,7 @@
   <script src="../i18n/locales/fr.js"></script>
   <script src="../i18n/locales/en.js"></script>
   <script src="tab_sync.js"></script>
+  <script src="cdc_meta.js"></script>
   <script src="scope_math.js"></script>
   <script src="bus_decode.js"></script>
   <script src="scope_captures.js"></script>

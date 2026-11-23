@@ -93,9 +93,12 @@ class SerialManager {
     if (this.worker) return;
 
     const psScript = `
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
 $code = @'
 using System;
 using System.IO.Ports;
+using System.Text;
 using System.Threading;
 
 public class DmmSerialWorker {
@@ -104,6 +107,8 @@ public class DmmSerialWorker {
 
     public static void Run(string portName) {
         try {
+            Console.OutputEncoding = new UTF8Encoding(false);
+            Console.InputEncoding = new UTF8Encoding(false);
             port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
             port.DtrEnable = true;
             port.RtsEnable = true;
@@ -174,11 +179,13 @@ Add-Type -TypeDefinition $code
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe']
       });
+      this.worker.stdout.setEncoding('utf8');
+      this.worker.stderr.setEncoding('utf8');
 
       let lineBuffer = '';
 
       this.worker.stdout.on('data', (chunk) => {
-        lineBuffer += chunk.toString();
+        lineBuffer += chunk;
         const lines = lineBuffer.split(/\r?\n/);
         lineBuffer = lines.pop();
 
@@ -219,7 +226,7 @@ Add-Type -TypeDefinition $code
       });
 
       this.worker.stderr.on('data', (data) => {
-        const err = data.toString().trim();
+        const err = String(data).trim();
         if (err) this.emitLog('error', `PS Error: ${err}`);
       });
 

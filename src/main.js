@@ -5,6 +5,7 @@ const deviceManager = require('./device_manager');
 const serialManager = require('./serial_manager');
 const i18n = require('./i18n/main');
 const updater = require('./updater');
+const fwFlasher = require('./fw_flasher');
 
 let mainWindow = null;
 let pollTimer = null;
@@ -172,6 +173,28 @@ ipcMain.handle('device:get-screenshots', async () => {
 
 ipcMain.handle('device:save-waveform', async (_event, { filename, points }) => {
   return deviceManager.saveWaveformCsv(filename, points);
+});
+
+ipcMain.handle('device:select-firmware-file', async (_event, targetHw) => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: i18n.t('fw.select_dialog_title'),
+    properties: ['openFile'],
+    filters: [{ name: i18n.t('fw.bin_filter'), extensions: ['bin'] }]
+  });
+  if (res.canceled || !res.filePaths.length) {
+    return null;
+  }
+  const filePath = res.filePaths[0];
+  const validation = fwFlasher.validateFirmwareFile(filePath, targetHw || deviceManager.currentStatus.hwVersion);
+  return { filePath, validation };
+});
+
+ipcMain.handle('device:validate-firmware-file', async (_event, { filePath, targetHw }) => {
+  return fwFlasher.validateFirmwareFile(filePath, targetHw || deviceManager.currentStatus.hwVersion);
+});
+
+ipcMain.handle('device:flash-firmware', async (_event, { filePath, targetHw }) => {
+  return await deviceManager.flashFirmware(filePath, targetHw);
 });
 
 ipcMain.handle('system:open-explorer', async (_event, targetPath) => {

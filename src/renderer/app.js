@@ -12,6 +12,22 @@ const t = translator.t;
 let currentDeviceStatus = null;
 let isLiveSerialConnected = false;
 let liveSerialPort = null;
+let liveFirmwareVersion = null;
+let liveHardwareRev = null;
+let liveUpdateState = null;
+let fwSelectedPath = null;
+let fwValidation = null;
+let fwPhase = 'idle';
+let fwPollTimer = null;
+let fwTimeoutTimer = null;
+let fwBootloaderGraceTimer = null;
+let fwSawActiveUpdate = false;
+let fwSawDisconnect = false;
+let fwUpdInFlight = false;
+let fwUpdSentAt = 0;
+let fwLastErrorText = '';
+let fwDoneVer = null;
+let serialProbeTimers = [];
 let scopeRunning = true;
 let liveScopeWave1 = null;
 let liveScopeWave2 = null;
@@ -130,12 +146,14 @@ btnOpenExplorer.addEventListener('click', async () => {
 function updateDeviceUI(status) {
   currentDeviceStatus = status;
   statusPill.className = 'status-pill';
+  const verLabel = liveFirmwareVersion ? `OpenScope ${liveFirmwareVersion}` : null;
+  const hwLabel = liveHardwareRev ? `HW: ${liveHardwareRev}` : null;
 
   if (!status || !status.connected) {
     if (isLiveSerialConnected) {
       statusPill.classList.add('online');
-      statusText.innerText = liveSerialPort ? `OpenScope (${liveSerialPort})` : t('status.connected');
-      metaHw.innerText = 'USB-CDC Live';
+      statusText.innerText = verLabel || (liveSerialPort ? `OpenScope (${liveSerialPort})` : t('status.connected'));
+      metaHw.innerText = hwLabel || 'USB-CDC Live';
       metaDrive.innerText = t('header.drive_none');
     } else {
       statusPill.classList.add('offline');
@@ -153,14 +171,17 @@ function updateDeviceUI(status) {
     metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
   } else {
     statusPill.classList.add('online');
-    statusText.innerText = status.firmwareVersion || t('status.connected');
-    metaHw.innerText = status.hwVersion;
+    statusText.innerText = verLabel || status.firmwareVersion || t('status.connected');
+    metaHw.innerText = hwLabel || status.hwVersion;
     metaDrive.innerText = t('header.drive', { drive: status.driveLetter });
 
     if (status.bootloaderCrc) {
       const crcEl = document.getElementById('valBootloaderCrc');
       if (crcEl) crcEl.innerText = status.bootloaderCrc;
     }
+  }
+  if (typeof refreshFwModalDeviceInfo === 'function') {
+    refreshFwModalDeviceInfo();
   }
 }
 
@@ -656,11 +677,25 @@ rngDmmSim?.addEventListener('input', updateDmmReading);
 // 0.1 LIVE USB-CDC SERIAL TELEMETRY STREAM
 // ==========================================
 
+function clearSerialProbeTimers() {
+  serialProbeTimers.forEach(clearTimeout);
+  serialProbeTimers = [];
+}
+
 function updateSerialConnectionUI(connected, port) {
+  const becameConnected = !!connected && !isLiveSerialConnected;
   isLiveSerialConnected = connected;
   document.body.classList.toggle('live-link', !!connected);
   liveSerialPort = port;
-  if (!connected) { deviceModeKnown = false; stopBuzzer(); setDmmAlertState(false); }
+  if (!connected) {
+    clearSerialProbeTimers();
+    deviceModeKnown = false;
+    liveFirmwareVersion = null;
+    liveHardwareRev = null;
+    liveUpdateState = null;
+    stopBuzzer();
+    setDmmAlertState(false);
+  }
   serialUiShown = true;
   if (connected) {
     if (tagDmmLive) {
@@ -679,6 +714,17 @@ function updateSerialConnectionUI(connected, port) {
       boxDmmLiveStatus.innerText = t('dmm.live_active', { port: port || 'COM4' });
     }
     if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_live');
+    if (becameConnected && window.api && window.api.sendDmmCommand) {
+      clearSerialProbeTimers();
+      serialProbeTimers.push(
+        setTimeout(() => {
+          if (isLiveSerialConnected) window.api.sendDmmCommand('VER?\n');
+        }, 250),
+        setTimeout(() => {
+          if (isLiveSerialConnected) window.api.sendDmmCommand('GEN:?\n');
+        }, 550)
+      );
+    }
   } else {
     if (tagDmmLive) {
       tagDmmLive.innerText = t('dmm.live_waiting');
@@ -693,6 +739,9 @@ function updateSerialConnectionUI(connected, port) {
     }
     if (boxDmmLiveStatus) boxDmmLiveStatus.style.display = 'none';
     if (lblDmmHwMsg) lblDmmHwMsg.innerText = t('dmm.hw_msg_waiting');
+  }
+  if (typeof onFwSerialStatusChange === 'function') {
+    onFwSerialStatusChange(!!connected);
   }
   updateDeviceUI(currentDeviceStatus);
 }
@@ -1001,6 +1050,31 @@ function processLiveSerialLine(line) {
   if (info && info.announced && info.mode === pendingMode) { pendingMode = null; clearTimeout(pendingTimer); }
   if (tab) switchTab(tab);
   if (line.startsWith('$MODE,')) return;
+
+  // Firmware identity ($VER,<version>,<hw>) & in-app update status ($UPD,...)
+  if (line.startsWith('$VER,')) {
+    const ver = CdcMeta.parseVerLine(line);
+    if (ver) {
+      liveFirmwareVersion = ver.version;
+      liveHardwareRev = ver.hw;
+      updateDeviceUI(currentDeviceStatus);
+      if (typeof onFwVerReceived === 'function') {
+        onFwVerReceived(ver);
+      }
+    }
+    return;
+  }
+
+  if (line.startsWith('$UPD,')) {
+    const upd = CdcMeta.parseUpdLine(line);
+    if (upd) {
+      liveUpdateState = upd;
+      if (typeof onFwUpdReceived === 'function') {
+        onFwUpdReceived(upd);
+      }
+    }
+    return;
+  }
 
   // Generator State: $GEN,<run>,<freq>,<wave>,<amp>
   if (line.startsWith('$GEN,')) {
@@ -2008,6 +2082,407 @@ document.getElementById('btnExportWaveform').addEventListener('click', async () 
 });
 
 // ==========================================
+// 2C23T FIRMWARE FLASHER MODAL
+// ==========================================
+const fwModalOverlay = document.getElementById('fwModalOverlay');
+const btnOpenFwModal = document.getElementById('btnOpenFwModal');
+const btnCloseFwModal = document.getElementById('btnCloseFwModal');
+const btnFwCancel = document.getElementById('btnFwCancel');
+const btnSelectFwFile = document.getElementById('btnSelectFwFile');
+const btnStartFwFlash = document.getElementById('btnStartFwFlash');
+const fwCurrentVer = document.getElementById('fwCurrentVer');
+const fwCurrentHw = document.getElementById('fwCurrentHw');
+const fwCurrentDrive = document.getElementById('fwCurrentDrive');
+const fwSelectedFile = document.getElementById('fwSelectedFile');
+const fwValidationBox = document.getElementById('fwValidationBox');
+const fwProgressSection = document.getElementById('fwProgressSection');
+const fwProgressFill = document.getElementById('fwProgressFill');
+const fwProgressLabel = document.getElementById('fwProgressLabel');
+const fwProgressPct = document.getElementById('fwProgressPct');
+
+function getDetectedDeviceHw() {
+  if (liveHardwareRev) return liveHardwareRev;
+  if (currentDeviceStatus && currentDeviceStatus.connected && currentDeviceStatus.hwVersion) {
+    return currentDeviceStatus.hwVersion;
+  }
+  return null;
+}
+
+function hasFwDriveReady() {
+  return !!(currentDeviceStatus && currentDeviceStatus.connected && currentDeviceStatus.driveLetter);
+}
+
+function isFwBusy() {
+  return ['writing', 'waiting', 'staging', 'ready', 'applying', 'rebooting', 'bootloader_copied'].includes(fwPhase);
+}
+
+function stopFwTimers() {
+  if (fwPollTimer) {
+    clearInterval(fwPollTimer);
+    fwPollTimer = null;
+  }
+  if (fwTimeoutTimer) {
+    clearTimeout(fwTimeoutTimer);
+    fwTimeoutTimer = null;
+  }
+  if (fwBootloaderGraceTimer) {
+    clearTimeout(fwBootloaderGraceTimer);
+    fwBootloaderGraceTimer = null;
+  }
+}
+
+function setFwProgress(pct, text) {
+  if (!fwProgressSection) return;
+  const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+  fwProgressSection.hidden = false;
+  if (fwProgressFill) fwProgressFill.style.width = `${clamped}%`;
+  if (fwProgressPct) fwProgressPct.innerText = `${clamped}%`;
+  if (fwProgressLabel) fwProgressLabel.innerText = text || '';
+}
+
+function formatFwValidation(val) {
+  if (!val) return null;
+  const sizeKb = val.size ? (val.size / 1024).toFixed(1) : '0.0';
+  const maxKb = val.maxSize ? Math.round(val.maxSize / 1024) : 0;
+  if (val.ok) {
+    if (val.warning === 'hw_unverified') {
+      return { cls: 'warn', text: t('fw.val_warn_hw_unverified', { hw: val.binaryHw || '?', sizeKb, maxKb }) };
+    }
+    if (val.warning === 'binary_hw_unknown') {
+      return { cls: 'warn', text: t('fw.val_warn_binary_unknown', { sizeKb, maxKb }) };
+    }
+    return { cls: 'ok', text: t('fw.val_ok', { hw: val.deviceHw || val.binaryHw || '2C23T', sizeKb, maxKb }) };
+  }
+  switch (val.reason) {
+    case 'bad_filename':
+      return { cls: 'err', text: t('fw.err_bad_filename') };
+    case 'too_small':
+      return { cls: 'err', text: t('fw.err_too_small', { size: val.size || 0 }) };
+    case 'too_large':
+      return { cls: 'err', text: t('fw.err_too_large', { sizeKb, maxKb }) };
+    case 'bad_vector':
+      return { cls: 'err', text: t('fw.err_bad_vector') };
+    case 'file_hw_conflict':
+      return { cls: 'err', text: t('fw.err_file_hw_conflict', { binaryHw: val.binaryHw || '?', filenameHw: val.filenameHw || '?' }) };
+    case 'hw_mismatch':
+      return { cls: 'err', text: t('fw.err_hw_mismatch', { binaryHw: val.binaryHw || '?', deviceHw: val.deviceHw || '?' }) };
+    case 'no_space':
+      return { cls: 'err', text: t('fw.err_no_space') };
+    default:
+      return { cls: 'err', text: t('fw.err_file_missing') };
+  }
+}
+
+function formatUpdError(code) {
+  switch (Number(code)) {
+    case 1: return t('fw.upd_err_1');
+    case 2: return t('fw.upd_err_2');
+    case 3: return t('fw.upd_err_3');
+    case 4: return t('fw.upd_err_4');
+    default: return t('fw.upd_err_unknown', { code });
+  }
+}
+
+function updateFwControls() {
+  const busy = isFwBusy();
+  if (btnSelectFwFile) btnSelectFwFile.disabled = busy;
+  if (btnCloseFwModal) btnCloseFwModal.disabled = fwPhase === 'writing';
+  if (btnFwCancel) btnFwCancel.disabled = fwPhase === 'writing';
+  if (btnStartFwFlash) {
+    btnStartFwFlash.disabled = busy || !fwSelectedPath || !fwValidation || !fwValidation.ok || !hasFwDriveReady();
+  }
+}
+
+function renderFwValidation() {
+  if (!fwValidationBox) return;
+  const formatted = formatFwValidation(fwValidation);
+  if (!formatted) {
+    fwValidationBox.hidden = true;
+    fwValidationBox.innerText = '';
+    fwValidationBox.className = 'fw-validation-box';
+  } else {
+    fwValidationBox.hidden = false;
+    fwValidationBox.innerText = formatted.text;
+    fwValidationBox.className = `fw-validation-box ${formatted.cls}`;
+  }
+  updateFwControls();
+}
+
+function refreshFwModalDeviceInfo() {
+  if (!fwCurrentVer || !fwCurrentHw || !fwCurrentDrive) return;
+  const verText = liveFirmwareVersion
+    ? `OpenScope ${liveFirmwareVersion}`
+    : (currentDeviceStatus && currentDeviceStatus.connected && currentDeviceStatus.firmwareVersion)
+      ? currentDeviceStatus.firmwareVersion
+      : (isLiveSerialConnected ? (liveSerialPort || 'USB-CDC') : t('fw.not_connected'));
+  const hwText = liveHardwareRev
+    || (currentDeviceStatus && currentDeviceStatus.connected && currentDeviceStatus.hwVersion)
+    || t('fw.hw_unknown');
+  const driveText = (currentDeviceStatus && currentDeviceStatus.connected && currentDeviceStatus.driveLetter)
+    ? currentDeviceStatus.driveLetter
+    : t('fw.not_connected');
+
+  fwCurrentVer.innerText = verText;
+  fwCurrentHw.innerText = hwText;
+  fwCurrentDrive.innerText = driveText;
+
+  if (fwModalOverlay && !fwModalOverlay.hidden && fwPhase === 'idle' && fwSelectedPath && window.api && window.api.validateFirmwareFile) {
+    const pathSnapshot = fwSelectedPath;
+    window.api.validateFirmwareFile(pathSnapshot, getDetectedDeviceHw()).then((val) => {
+      if (fwPhase === 'idle' && fwSelectedPath === pathSnapshot && fwModalOverlay && !fwModalOverlay.hidden) {
+        fwValidation = val;
+        renderFwValidation();
+      }
+    }).catch(() => {});
+  }
+
+  if (fwPhase === 'bootloader_copied' && currentDeviceStatus && currentDeviceStatus.mode === 'OPENSCOPE' && !fwBootloaderGraceTimer) {
+    fwBootloaderGraceTimer = setTimeout(() => {
+      fwBootloaderGraceTimer = null;
+      if (fwPhase === 'bootloader_copied') {
+        completeFwSuccess(null);
+      }
+    }, 2500);
+  }
+
+  updateFwControls();
+}
+
+function refreshFwModalTexts() {
+  if (fwSelectedFile && !fwSelectedPath) {
+    fwSelectedFile.innerText = t('fw.no_file');
+  }
+  refreshFwModalDeviceInfo();
+  renderFwValidation();
+  if (fwPhase === 'writing') setFwProgress(10, t('fw.phase_writing'));
+  else if (fwPhase === 'waiting') setFwProgress(15, t('fw.phase_waiting'));
+  else if (fwPhase === 'ready') setFwProgress(85, t('fw.phase_ready'));
+  else if (fwPhase === 'applying') setFwProgress(92, t('fw.phase_applying'));
+  else if (fwPhase === 'rebooting') setFwProgress(95, t('fw.phase_rebooting'));
+  else if (fwPhase === 'bootloader_copied') setFwProgress(65, t('fw.phase_bootloader_copied'));
+  else if (fwPhase === 'done') {
+    setFwProgress(100, fwDoneVer ? t('fw.phase_done', { version: fwDoneVer.version, hw: fwDoneVer.hw }) : t('fw.phase_done_generic'));
+  } else if (fwPhase === 'error' && fwLastErrorText && fwProgressLabel) {
+    fwProgressLabel.innerText = fwLastErrorText;
+  }
+}
+
+function completeFwSuccess(ver) {
+  stopFwTimers();
+  fwPhase = 'done';
+  fwDoneVer = ver || null;
+  const msg = ver ? t('fw.phase_done', { version: ver.version, hw: ver.hw }) : t('fw.phase_done_generic');
+  setFwProgress(100, msg);
+  showToast(msg, 5000);
+  updateFwControls();
+}
+
+function failFwUpdate(msg) {
+  stopFwTimers();
+  fwPhase = 'error';
+  fwLastErrorText = msg;
+  setFwProgress(0, msg);
+  showToast(msg, 5000);
+  updateFwControls();
+}
+
+function onFwUpdReceived(upd) {
+  fwUpdInFlight = false;
+  if (!isFwBusy()) return;
+  if (upd.state === 1) {
+    fwSawActiveUpdate = true;
+    fwPhase = 'staging';
+    const pct = upd.expected > 0 ? 20 + Math.round((upd.bytes / upd.expected) * 60) : 25;
+    const kb = Math.round(upd.bytes / 1024);
+    const totalKb = Math.round((upd.expected || upd.bytes) / 1024);
+    setFwProgress(Math.min(80, pct), t('fw.phase_staging', { kb, totalKb }));
+    updateFwControls();
+  } else if (upd.state === 2) {
+    fwSawActiveUpdate = true;
+    fwPhase = 'ready';
+    setFwProgress(85, t('fw.phase_ready'));
+    updateFwControls();
+  } else if (upd.state === 4) {
+    fwSawActiveUpdate = true;
+    if (fwPollTimer) {
+      clearInterval(fwPollTimer);
+      fwPollTimer = null;
+    }
+    fwPhase = 'applying';
+    setFwProgress(92, t('fw.phase_applying'));
+    updateFwControls();
+  } else if (upd.state === 3) {
+    failFwUpdate(formatUpdError(upd.error));
+  }
+}
+
+function onFwSerialStatusChange(connected) {
+  if (!connected && ['waiting', 'staging', 'ready', 'applying', 'bootloader_copied'].includes(fwPhase)) {
+    fwSawDisconnect = true;
+    if (fwPhase !== 'bootloader_copied') {
+      fwPhase = 'rebooting';
+      setFwProgress(95, t('fw.phase_rebooting'));
+    }
+    updateFwControls();
+  }
+}
+
+function onFwVerReceived(ver) {
+  if (['rebooting', 'applying', 'ready', 'staging', 'bootloader_copied'].includes(fwPhase) || (fwPhase === 'waiting' && (fwSawDisconnect || fwSawActiveUpdate))) {
+    completeFwSuccess(ver);
+  }
+}
+
+function openFwModal() {
+  if (!fwModalOverlay) return;
+  if (!isFwBusy() && fwPhase !== 'idle') {
+    fwPhase = 'idle';
+    fwSawActiveUpdate = false;
+    fwSawDisconnect = false;
+    fwLastErrorText = '';
+    fwDoneVer = null;
+    if (fwProgressSection) fwProgressSection.hidden = true;
+  }
+  fwModalOverlay.hidden = false;
+  refreshFwModalDeviceInfo();
+  renderFwValidation();
+  if (window.api && window.api.getStatus) {
+    window.api.getStatus().then(updateDeviceUI).catch(() => {});
+  }
+  if (isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+    window.api.sendDmmCommand('VER?\n');
+  }
+}
+
+function closeFwModal() {
+  if (!fwModalOverlay || fwPhase === 'writing') return;
+  fwModalOverlay.hidden = true;
+}
+
+if (btnOpenFwModal) btnOpenFwModal.addEventListener('click', openFwModal);
+if (btnCloseFwModal) btnCloseFwModal.addEventListener('click', closeFwModal);
+if (btnFwCancel) btnFwCancel.addEventListener('click', closeFwModal);
+if (fwModalOverlay) {
+  fwModalOverlay.addEventListener('click', (e) => {
+    if (e.target === fwModalOverlay) closeFwModal();
+  });
+}
+
+if (btnSelectFwFile) {
+  btnSelectFwFile.addEventListener('click', async () => {
+    if (isFwBusy() || !window.api || !window.api.selectFirmwareFile) return;
+    const picked = await window.api.selectFirmwareFile(getDetectedDeviceHw());
+    if (!picked) return;
+    fwSelectedPath = picked.filePath;
+    fwValidation = picked.validation;
+    if (fwSelectedFile) {
+      fwSelectedFile.innerText = picked.validation?.filename || picked.filePath;
+      fwSelectedFile.title = picked.filePath;
+    }
+    if (!isFwBusy()) {
+      fwPhase = 'idle';
+      if (fwProgressSection) fwProgressSection.hidden = true;
+    }
+    renderFwValidation();
+  });
+}
+
+if (btnStartFwFlash) {
+  btnStartFwFlash.addEventListener('click', async () => {
+    if (isFwBusy() || !fwSelectedPath || !window.api || !window.api.flashFirmware) return;
+    stopFwTimers();
+    fwSawActiveUpdate = false;
+    fwSawDisconnect = false;
+    fwUpdInFlight = false;
+    fwUpdSentAt = 0;
+    fwLastErrorText = '';
+    fwDoneVer = null;
+    fwPhase = 'writing';
+    setFwProgress(10, t('fw.phase_writing'));
+    updateFwControls();
+
+    try {
+      const targetHw = getDetectedDeviceHw();
+      const res = await window.api.flashFirmware(fwSelectedPath, targetHw);
+      if (!res || !res.success) {
+        if (res && res.validation) {
+          fwValidation = res.validation;
+          fwPhase = 'idle';
+          if (fwProgressSection) fwProgressSection.hidden = true;
+          renderFwValidation();
+          return;
+        }
+        failFwUpdate(t('fw.phase_write_error', { message: 'Unknown' }));
+        return;
+      }
+
+      if ((currentDeviceStatus && currentDeviceStatus.mode === 'BOOTLOADER') || !isLiveSerialConnected) {
+        fwPhase = 'bootloader_copied';
+        setFwProgress(65, t('fw.phase_bootloader_copied'));
+      } else {
+        fwPhase = 'waiting';
+        setFwProgress(15, t('fw.phase_waiting'));
+        fwPollTimer = setInterval(() => {
+          if (isLiveSerialConnected && window.api && window.api.sendDmmCommand) {
+            if (!fwUpdInFlight || Date.now() - fwUpdSentAt > 2500) {
+              fwUpdInFlight = true;
+              fwUpdSentAt = Date.now();
+              window.api.sendDmmCommand('UPD?\n');
+            }
+          }
+        }, 800);
+        fwUpdInFlight = true;
+        fwUpdSentAt = Date.now();
+        window.api.sendDmmCommand('UPD?\n');
+      }
+
+      fwTimeoutTimer = setTimeout(() => {
+        if (isFwBusy()) {
+          failFwUpdate(t('fw.phase_timeout'));
+        }
+      }, 90000);
+      updateFwControls();
+    } catch (err) {
+      failFwUpdate(t('fw.phase_write_error', { message: err && err.message ? err.message : String(err) }));
+    }
+  });
+}
+
+// ==========================================
+// COLLAPSIBLE SIDEBAR NAVIGATION
+// ==========================================
+const appSidebar = document.getElementById('appSidebar');
+const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') !== 'false';
+
+function applySidebarState(collapsed) {
+  sidebarCollapsed = !!collapsed;
+  if (appSidebar) appSidebar.classList.toggle('collapsed', sidebarCollapsed);
+  localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  if (btnToggleSidebar) {
+    btnToggleSidebar.title = t(sidebarCollapsed ? 'sidebar.expand' : 'sidebar.collapse');
+    btnToggleSidebar.setAttribute('aria-expanded', String(!sidebarCollapsed));
+  }
+}
+
+if (btnToggleSidebar) {
+  btnToggleSidebar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    applySidebarState(!sidebarCollapsed);
+  });
+}
+
+if (appSidebar) {
+  appSidebar.addEventListener('click', (e) => {
+    if (sidebarCollapsed && !e.target.closest('button')) {
+      applySidebarState(false);
+    }
+  });
+}
+
+applySidebarState(sidebarCollapsed);
+
+// ==========================================
 // LANGUAGE SELECTOR
 // ==========================================
 const selLanguage = document.getElementById('selLanguage');
@@ -2016,6 +2491,8 @@ const selLanguage = document.getElementById('selLanguage');
 function refreshDynamicTexts() {
   if (currentDeviceStatus) updateDeviceUI(currentDeviceStatus);
   if (serialUiShown) updateSerialConnectionUI(isLiveSerialConnected, liveSerialPort);
+  if (typeof refreshFwModalTexts === 'function') refreshFwModalTexts();
+  applySidebarState(sidebarCollapsed);
   renderDmmRange();
   renderWavePointsLabels();
   renderDmmCanvas();
@@ -2091,6 +2568,7 @@ const SHORTCUT_ACTIONS = {
 };
 
 document.addEventListener('keydown', (e) => {
+  if (fwModalOverlay && !fwModalOverlay.hidden) return;
   const el = e.target;
   // Space activates a focused button or checkbox natively: leave it alone there
   const isControl = el && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName);
