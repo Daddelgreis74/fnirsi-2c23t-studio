@@ -1,18 +1,38 @@
 // Decides when an open-but-silent telemetry stream has to be restarted.
 //
-// The 2C23T streams continuously while the oscilloscope or the multimeter is
-// on screen, so a port that stays open while nothing arrives means the reader
-// is wedged, not that the device is idle. Kept free of I/O so it can be tested.
+// Only an actively running oscilloscope streams continuously (~15 Hz). DMM,
+// Generator, paused Scope (run=0), and one-shot queries ($VER/$GEN/$UPD/$SHOT)
+// are event-driven or silent, so they must disarm or never arm the watchdog.
 
 const DEFAULT_IDLE_MS = 4000;
 
-// `lastLineAt` is 0 (falsy) until the first line of a connection arrives. That
-// keeps the watchdog quiet on screens that legitimately stream nothing, and it
-// limits a silent connection to a single restart: the restart clears the mark
-// again, so no further restart follows until real data has been seen.
+function nextWatchdogMark(line, currentMark, now) {
+  const trimmed = typeof line === 'string' ? line.trim() : '';
+  if (!trimmed) return currentMark;
+  if (trimmed.startsWith('$WAVE,')) return now;
+  if (trimmed.startsWith('$SCOPE,')) {
+    const parts = trimmed.split(',');
+    if (parts.length >= 9 && parts[8].trim() === '0') return 0;
+    return now;
+  }
+  if (
+    trimmed.startsWith('$MODE,DMM') ||
+    trimmed.startsWith('$MODE,GEN') ||
+    trimmed.startsWith('$DMM,') ||
+    trimmed.startsWith('$GEN,') ||
+    trimmed.startsWith('$UPD,')
+  ) {
+    return 0;
+  }
+  return currentMark;
+}
+
+// `lastLineAt` is 0 (falsy) until continuous Scope streaming arrives. That
+// keeps the watchdog quiet on DMM/GEN/idle screens, and it limits a stalled
+// Scope connection to a single restart per drop.
 function isStreamStalled({ connected, lastLineAt, now, idleMs = DEFAULT_IDLE_MS }) {
   if (!connected || !lastLineAt) return false;
   return now - lastLineAt >= idleMs;
 }
 
-module.exports = { isStreamStalled, DEFAULT_IDLE_MS };
+module.exports = { isStreamStalled, nextWatchdogMark, DEFAULT_IDLE_MS };

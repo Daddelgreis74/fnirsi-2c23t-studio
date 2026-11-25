@@ -5,7 +5,7 @@ const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { t } = require('./i18n/main');
-const { isStreamStalled } = require('./stream_watchdog');
+const { isStreamStalled, nextWatchdogMark } = require('./stream_watchdog');
 
 class SerialManager {
   constructor() {
@@ -234,7 +234,7 @@ Add-Type -TypeDefinition $code
             }
           } else if (trimmed.startsWith('[RX]:')) {
             const rxLine = trimmed.substring(5);
-            this.lastLineAt = Date.now();
+            this.lastLineAt = nextWatchdogMark(rxLine, this.lastLineAt, Date.now());
             if (this.shouldLogRx(rxLine)) this.emitLog('rx', rxLine);
             if (this.onLineCallback) {
               this.onLineCallback(rxLine);
@@ -302,6 +302,9 @@ Add-Type -TypeDefinition $code
     if (this.worker && this.worker.stdin && this.worker.stdin.writable) {
       try {
         const cleanCmd = cmd.trim();
+        if (/^(MODE:(DMM|GEN)|UPD\?)/i.test(cleanCmd)) {
+          this.lastLineAt = 0;
+        }
         this.worker.stdin.write(cleanCmd + '\n');
         return { success: true };
       } catch (e) {
