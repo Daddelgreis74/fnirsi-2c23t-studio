@@ -187,6 +187,7 @@
   "serial.open_error": "Fehler beim Öffnen von {port}: {message}",
   "serial.send_error": "Sende-Fehler: {message}",
   "serial.receive_error": "Empfangs-Fehler: {message}",
+  "serial.stream_stalled": "Telemetrie seit {seconds}s stumm: Worker wird neu gestartet.",
   "serial.disconnected": "Verbindung getrennt.",
   "serial.worker_error": "Worker Prozessfehler: {message}",
   "serial.worker_start_failed": "Worker-Start fehlgeschlagen: {message}",

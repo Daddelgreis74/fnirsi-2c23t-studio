@@ -187,6 +187,7 @@
   "serial.open_error": "Error opening {port}: {message}",
   "serial.send_error": "Send error: {message}",
   "serial.receive_error": "Receive error: {message}",
+  "serial.stream_stalled": "Telemetry silent for {seconds}s: restarting the worker.",
   "serial.disconnected": "Connection closed.",
   "serial.worker_error": "Worker process error: {message}",
   "serial.worker_start_failed": "Worker start failed: {message}",

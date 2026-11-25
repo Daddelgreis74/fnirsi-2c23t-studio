@@ -188,6 +188,7 @@
   "serial.send_error": "Erreur d'envoi : {message}",
   "serial.receive_error": "Erreur de réception : {message}",
   "serial.disconnected": "Connexion interrompue.",
+  "serial.stream_stalled": "Télémétrie muette depuis {seconds} s : redémarrage du worker.",
   "serial.worker_error": "Erreur du processus worker : {message}",
   "serial.worker_start_failed": "Échec du démarrage du worker : {message}",
   "serial.send_failed": "Impossible d'envoyer la commande '{cmd}' : {message}",
