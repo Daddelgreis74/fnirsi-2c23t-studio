@@ -5,6 +5,7 @@ const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { t } = require('./i18n/main');
+const { isStreamStalled } = require('./stream_watchdog');
 
 class SerialManager {
   constructor() {
@@ -15,6 +16,8 @@ class SerialManager {
     this.onLineCallback = null;
     this.onStatusCallback = null;
     this.onLogCallback = null;
+    this.watchdogTimer = null;
+    this.lastLineAt = 0;
     this.logFilePath = path.join(process.cwd(), 'dmm_telemetry.log');
   }
 
@@ -48,6 +51,17 @@ class SerialManager {
         this.checkAndConnect();
       }
     }, 2500);
+
+    // A port that stays open while the stream goes quiet means the reader is
+    // wedged: restart it rather than show a frozen trace.
+    this.watchdogTimer = setInterval(() => {
+      if (!this.isRunning || !this.worker) return;
+      if (!isStreamStalled({ connected: true, lastLineAt: this.lastLineAt, now: Date.now() })) return;
+      const seconds = Math.round((Date.now() - this.lastLineAt) / 1000);
+      this.lastLineAt = 0;
+      this.emitLog('error', t('serial.stream_stalled', { seconds }));
+      this.killWorker();
+    }, 1000);
   }
 
   // Scope frames arrive about 15 times a second and are long: log at most one of each kind per second
@@ -91,12 +105,14 @@ class SerialManager {
 
   spawnWorker(port) {
     if (this.worker) return;
+    this.lastLineAt = 0;
 
     const psScript = `
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
 $code = @'
 using System;
+using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
@@ -104,6 +120,11 @@ using System.Threading;
 public class DmmSerialWorker {
     private static SerialPort port;
     private static volatile bool running = true;
+    // Only the main loop is allowed to touch the port. Writing from the stdin
+    // thread while a read was pending aborted that read (ERROR_OPERATION_ABORTED)
+    // and the telemetry went silent for good, so commands are queued instead.
+    private static readonly Queue<string> txQueue = new Queue<string>();
+    private static readonly object txLock = new object();
 
     public static void Run(string portName) {
         try {
@@ -112,7 +133,7 @@ public class DmmSerialWorker {
             port = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
             port.DtrEnable = true;
             port.RtsEnable = true;
-            port.ReadTimeout = 1500;
+            port.ReadTimeout = 400;
             port.WriteTimeout = 1500;
             port.Open();
 
@@ -120,15 +141,13 @@ public class DmmSerialWorker {
             Console.Out.Flush();
 
             Thread readerThread = new Thread(() => {
-                while (running && port != null && port.IsOpen) {
+                while (running) {
                     try {
                         string cmd = Console.ReadLine();
                         if (cmd == null) break;
                         cmd = cmd.Trim();
-                        if (cmd.Length > 0 && port.IsOpen) {
-                            port.WriteLine(cmd);
-                            Console.WriteLine("[TX]:" + cmd);
-                            Console.Out.Flush();
+                        if (cmd.Length > 0) {
+                            lock (txLock) { txQueue.Enqueue(cmd); }
                         }
                     } catch (Exception ex) {
                         Console.WriteLine("[ERR_TX]:" + ex.Message);
@@ -140,6 +159,20 @@ public class DmmSerialWorker {
             readerThread.Start();
 
             while (running && port != null && port.IsOpen) {
+                string pending = null;
+                lock (txLock) { if (txQueue.Count > 0) pending = txQueue.Dequeue(); }
+                if (pending != null) {
+                    try {
+                        port.WriteLine(pending);
+                        Console.WriteLine("[TX]:" + pending);
+                        Console.Out.Flush();
+                    } catch (Exception ex) {
+                        Console.WriteLine("[ERR_TX]:" + ex.Message);
+                        Console.Out.Flush();
+                    }
+                    continue;
+                }
+
                 try {
                     string line = port.ReadLine();
                     if (!string.IsNullOrEmpty(line)) {
@@ -201,6 +234,7 @@ Add-Type -TypeDefinition $code
             }
           } else if (trimmed.startsWith('[RX]:')) {
             const rxLine = trimmed.substring(5);
+            this.lastLineAt = Date.now();
             if (this.shouldLogRx(rxLine)) this.emitLog('rx', rxLine);
             if (this.onLineCallback) {
               this.onLineCallback(rxLine);
@@ -250,6 +284,20 @@ Add-Type -TypeDefinition $code
     }
   }
 
+  // Kills the worker but leaves the manager running, so the 2500 ms poll
+  // timer reconnects on its own.
+  killWorker() {
+    if (this.worker && this.worker.pid) {
+      try {
+        exec(`taskkill /pid ${this.worker.pid} /f /t`);
+      } catch (e) {}
+      this.worker = null;
+    }
+    if (this.onStatusCallback) {
+      this.onStatusCallback({ connected: false, port: null });
+    }
+  }
+
   sendCommand(cmd) {
     if (this.worker && this.worker.stdin && this.worker.stdin.writable) {
       try {
@@ -271,15 +319,11 @@ Add-Type -TypeDefinition $code
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-    if (this.worker && this.worker.pid) {
-      try {
-        exec(`taskkill /pid ${this.worker.pid} /f /t`);
-      } catch (e) {}
-      this.worker = null;
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
     }
-    if (this.onStatusCallback) {
-      this.onStatusCallback({ connected: false, port: null });
-    }
+    this.killWorker();
   }
 }
 
