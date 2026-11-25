@@ -20,6 +20,8 @@ class DeviceManager {
     };
     this.lastFilesHash = '';
     this.scanning = false;
+    this.usbModels = {};
+    this.usbModelSignature = null;
   }
 
   classifyDrive(d, dirFiles = [], readFileText = () => '') {
@@ -94,100 +96,139 @@ class DeviceManager {
     return null;
   }
 
-  // Scan logical drives on Windows using PowerShell Get-CimInstance
-  scanDrives() {
-    if (this.scanning) {
-      return Promise.resolve(this.currentStatus);
-    }
-    this.scanning = true;
-
+  runPowerShell(script) {
     return new Promise((resolve) => {
-      const psScript = [
-        '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
-        '$usb = @{}',
-        "Get-CimInstance Win32_DiskDrive | Where-Object { $_.Model -match 'F2C23T|FNIRSI' -or $_.PNPDeviceID -match 'F2C23T|FNIRSI' } | ForEach-Object {",
-        '  $m = $_.Model',
-        '  Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_DiskPartition | ForEach-Object {',
-        '    Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_LogicalDisk | ForEach-Object {',
-        '      if ($_.DeviceID) { $usb[$_.DeviceID.ToUpper()] = $m }',
-        '    }',
-        '  }',
-        '}',
-        'Get-CimInstance Win32_LogicalDisk | ForEach-Object {',
-        '  $k = if ($_.DeviceID) { $_.DeviceID.ToUpper() } else { "" }',
-        '  [PSCustomObject]@{ DeviceID = $_.DeviceID; VolumeName = $_.VolumeName; FileSystem = $_.FileSystem; FreeSpace = $_.FreeSpace; Size = $_.Size; DriveType = $_.DriveType; UsbModel = $usb[$k] }',
-        '} | ConvertTo-Json -Compress'
-      ].join('; ');
-
       execFile(
         'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
         { timeout: 5000, encoding: 'utf8' },
         (err, stdout) => {
+          if (err || !stdout || !stdout.trim()) return resolve(null);
           try {
-            if (err || !stdout || !stdout.trim()) {
-              this.currentStatus = {
-                ...this.currentStatus,
-                connected: false,
-                mode: 'DISCONNECTED',
-                driveLetter: null,
-                bootloaderCrc: null,
-                firmwareVersion: null,
-                hwVersion: 'Unknown',
-                files: []
-              };
-              return resolve(this.currentStatus);
-            }
-
-            let drives = JSON.parse(stdout.trim());
-            if (!Array.isArray(drives)) drives = [drives];
-
-            let detected = null;
-
-            for (const d of drives) {
-              const letter = d && d.DeviceID ? d.DeviceID.toUpperCase() : '';
-              if (!letter) continue;
-              const root = letter.endsWith('\\') ? letter : letter + '\\';
-
-              try {
-                if (!fs.existsSync(root)) continue;
-                const dirFiles = fs.readdirSync(root);
-                const match = this.classifyDrive(d, dirFiles, (name) =>
-                  fs.readFileSync(path.join(root, name), 'utf8')
-                );
-                if (match) {
-                  detected = match;
-                  break;
-                }
-              } catch (e) {
-                // Drive read failed (e.g. CD-ROM or locked), skip
-              }
-            }
-
-            if (detected) {
-              this.currentStatus = { ...this.currentStatus, ...detected };
-            } else {
-              this.currentStatus = {
-                ...this.currentStatus,
-                connected: false,
-                mode: 'DISCONNECTED',
-                driveLetter: null,
-                bootloaderCrc: null,
-                firmwareVersion: null,
-                hwVersion: 'Unknown',
-                files: []
-              };
-            }
-
-            resolve(this.currentStatus);
+            resolve(JSON.parse(stdout.trim()));
           } catch (e) {
-            resolve(this.currentStatus);
-          } finally {
-            this.scanning = false;
+            resolve(null);
           }
         }
       );
     });
+  }
+
+  // The logical drives, as the operating system already knows them. This stays
+  // on the host side, so it is safe to run on every poll.
+  listLogicalDrives() {
+    return this.runPowerShell([
+      '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+      'Get-CimInstance Win32_LogicalDisk | ForEach-Object {',
+      '  [PSCustomObject]@{ DeviceID = $_.DeviceID; VolumeName = $_.VolumeName; FileSystem = $_.FileSystem; FreeSpace = $_.FreeSpace; Size = $_.Size; DriveType = $_.DriveType }',
+      '} | ConvertTo-Json -Compress'
+    ].join('; '));
+  }
+
+  // Which drive letter sits behind which USB disk, so that a 2C23T drive with
+  // no marker file on it is still recognised.
+  //
+  // Enumerating the physical disks makes Windows interrogate the device, and
+  // the firmware serves USB storage and the CDC telemetry from the same loop:
+  // running this every 1500 ms silenced the live stream every 15 to 40
+  // seconds. The answer only changes when a drive appears or disappears, so it
+  // is cached and refreshed on that event alone.
+  readUsbModelMap() {
+    return this.runPowerShell([
+      '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+      '$usb = @{}',
+      "Get-CimInstance Win32_DiskDrive | Where-Object { $_.Model -match 'F2C23T|FNIRSI' -or $_.PNPDeviceID -match 'F2C23T|FNIRSI' } | ForEach-Object {",
+      '  $m = $_.Model',
+      '  Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_DiskPartition | ForEach-Object {',
+      '    Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_LogicalDisk | ForEach-Object {',
+      '      if ($_.DeviceID) { $usb[$_.DeviceID.ToUpper()] = $m }',
+      '    }',
+      '  }',
+      '}',
+      '$usb | ConvertTo-Json -Compress'
+    ].join('; '));
+  }
+
+  // Fingerprint of the removable drives. The USB model map can only change
+  // when this does, so it decides when the expensive scan has to run again.
+  removableSignature(drives) {
+    return (drives || [])
+      .filter((d) => d && Number(d.DriveType) === 2)
+      .map((d) => `${String(d.DeviceID || '').toUpperCase()}|${d.VolumeName || ''}|${d.Size || ''}`)
+      .sort()
+      .join(';');
+  }
+
+  markDisconnected() {
+    this.currentStatus = {
+      ...this.currentStatus,
+      connected: false,
+      mode: 'DISCONNECTED',
+      driveLetter: null,
+      bootloaderCrc: null,
+      firmwareVersion: null,
+      hwVersion: 'Unknown',
+      files: []
+    };
+    return this.currentStatus;
+  }
+
+  // Scan logical drives on Windows using PowerShell Get-CimInstance
+  async scanDrives() {
+    if (this.scanning) {
+      return this.currentStatus;
+    }
+    this.scanning = true;
+
+    try {
+      let drives = await this.listLogicalDrives();
+      if (!drives) return this.markDisconnected();
+      if (!Array.isArray(drives)) drives = [drives];
+
+      const signature = this.removableSignature(drives);
+      if (signature !== this.usbModelSignature) {
+        const map = await this.readUsbModelMap();
+        if (map) {
+          this.usbModels = map;
+          this.usbModelSignature = signature;
+        }
+      }
+      for (const d of drives) {
+        const key = d && d.DeviceID ? d.DeviceID.toUpperCase() : '';
+        if (key && this.usbModels[key]) d.UsbModel = this.usbModels[key];
+      }
+
+      let detected = null;
+      for (const d of drives) {
+        const letter = d && d.DeviceID ? d.DeviceID.toUpperCase() : '';
+        if (!letter) continue;
+        const root = letter.endsWith('\\') ? letter : letter + '\\';
+
+        try {
+          if (!fs.existsSync(root)) continue;
+          const dirFiles = fs.readdirSync(root);
+          const match = this.classifyDrive(d, dirFiles, (name) =>
+            fs.readFileSync(path.join(root, name), 'utf8')
+          );
+          if (match) {
+            detected = match;
+            break;
+          }
+        } catch (e) {
+          // Drive read failed (e.g. CD-ROM or locked), skip
+        }
+      }
+
+      if (detected) {
+        this.currentStatus = { ...this.currentStatus, ...detected };
+        return this.currentStatus;
+      }
+      return this.markDisconnected();
+    } catch (e) {
+      return this.currentStatus;
+    } finally {
+      this.scanning = false;
+    }
   }
 
   // Get all screenshots (.bmp) with metadata & base64 preview
